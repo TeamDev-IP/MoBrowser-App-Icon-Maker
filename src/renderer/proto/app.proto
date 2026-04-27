@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+import "google/protobuf/empty.proto";
+
+message SetThemeRequest {
+  string theme = 1;
+}
+
+service AppService {
+  rpc SetTheme(SetThemeRequest) returns (google.protobuf.Empty);
+}

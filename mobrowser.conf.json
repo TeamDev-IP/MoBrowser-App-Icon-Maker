@@ -1,0 +1,73 @@
+{
+  "app": {
+    "name": "IconMaker",
+    "version": {
+      "major": "1",
+      "minor": "0",
+      "patch": "0"
+    },
+    "author": "",
+    "copyright": "",
+    "description": "",
+    "locales": ["en-US"],
+    "trustedOrigins": [],
+    "bundle": {
+      "macOS": {
+        "icon": "assets/app.icns",
+        "bundleID": "com.company.IconMaker",
+        "codesignIdentity": "",
+        "codesignEntitlements": "assets/entitlements.plist",
+        "teamID": "",
+        "appleID": "",
+        "password": "",
+        "installer": {
+          "dmg": {
+            "name": "",
+            "volumeName": "",
+            "volumeIcon": "assets/app.icns",
+            "eula": "",
+            "window": {
+              "textSize": 14,
+              "skipPrettifying": false,
+              "backgroundImage": "",
+              "position": {
+                "x": 500,
+                "y": 400
+              },
+              "size": {
+                "width": 600,
+                "height": 400
+              },
+              "icon": {
+                "size": 150,
+                "position": {
+                  "x": 160,
+                  "y": 160
+                }
+              },
+              "appDropLink": {
+                "x": 430,
+                "y": 160
+              }
+            }
+          }
+        }
+      },
+      "Windows": {
+        "icon": "assets/app.ico",
+        "signCommand": "",
+        "installer": {
+          "exe": {
+            "name": "",
+            "icon": "assets/app.ico",
+            "installationGif": "",
+            "deltaStrategy": "BestSpeed"
+          }
+        }
+      },
+      "Linux": {
+        "icon": "assets/app.png"
+      }
+    }
+  }
+}

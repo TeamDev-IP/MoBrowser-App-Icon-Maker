@@ -1,0 +1,11 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "type": "shell",
+      "command": "npx vite build --mode main",
+      "problemMatcher": [],
+      "label": "npm: build:main"
+    }
+  ]
+}
