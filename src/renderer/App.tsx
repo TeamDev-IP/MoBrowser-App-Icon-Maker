@@ -1,4 +1,4 @@
-import { useState, useRef, type CSSProperties, type ChangeEvent, type KeyboardEvent } from "react"
+import { useState, useRef, useEffect, type CSSProperties, type ChangeEvent, type KeyboardEvent } from "react"
 import { ThemeProvider } from "@/components/theme-provider"
 import {
   ImagePlus,
@@ -10,12 +10,14 @@ import {
   ChevronRight,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useIconPipeline } from "@/lib/icon-pipeline"
+import { ipc } from "@/gen/ipc"
 
 type IconState = "idle" | "generating" | "generated" | "refine"
 
 type ResumeAfterCancel = "idle" | "generated" | "refine"
 
-// Lamé / superellipse “squircle” (continuous curvature), much closer to the
+// Lamé / superellipse "squircle" (continuous curvature), much closer to the
 // iOS/macOS app icon mask than a simple rounded rect (circular fillets).
 const SQUIRCLE_N = 3.2
 const SQUICLE_STEPS = 72
@@ -173,10 +175,13 @@ function squircleStrokeWidthVbForVisibleBorder(visibleBorderPx: number, boxSizeP
 
 function IconFace({
   state,
+  src,
   squircleEdgeStroke = ICON_FACE_EDGE_DEFAULT,
   squircleEdgeWidth = "0.4",
 }: {
   state: IconState
+  /** Generated image URL.  When provided the image is shown instead of the placeholder. */
+  src?: string | null
   /** SVG path stroke; defaults to a light hairline. */
   squircleEdgeStroke?: string
   /** Stroke width in the 0–100 viewBox. */
@@ -184,7 +189,14 @@ function IconFace({
 }) {
   return (
     <>
-      {state === "generated" ? (
+      {src ? (
+        <img
+          src={src}
+          alt="Generated icon"
+          className="absolute inset-0 w-full h-full object-cover"
+          draggable={false}
+        />
+      ) : state === "generated" ? (
         <>
           <div className="absolute inset-0 bg-linear-to-br from-violet-600 via-indigo-500 to-blue-400" />
           <div
@@ -280,9 +292,11 @@ function IconStack({ state }: { state: IconState }) {
 function VariantPicker({
   selected,
   onSelect,
+  variants,
 }: {
   selected: number | null
   onSelect: (i: number) => void
+  variants: (string | null)[]
 }) {
   const iconPx = 144
   const selectionRingPx = 4
@@ -296,6 +310,7 @@ function VariantPicker({
     <div className="flex gap-8">
       {[0, 1, 2].map((i) => {
         const isSelected = selected === i
+        const src = variants[i]
         return (
           <button
             key={i}
@@ -316,7 +331,7 @@ function VariantPicker({
                 ...appIconShapeClip,
               }}
             >
-              <IconFace state="generated" />
+              <IconFace state="generated" src={src} />
             </div>
             {isSelected && (
               <svg
@@ -343,13 +358,13 @@ function VariantPicker({
   )
 }
 
-// ── Single “base” icon (after user confirms a variant) ───────────────────────
+// ── Single "base" icon (after user confirms a variant) ───────────────────────
 
-function SingleRefineIcon() {
+function SingleRefineIcon({ src }: { src?: string | null }) {
   return (
     <div className="relative" style={{ width: "144px", height: "144px", filter: ICON_CLIP_FILTER_BASE }}>
       <div className="overflow-hidden" style={{ width: "100%", height: "100%", ...appIconShapeClip }}>
-        <IconFace state="generated" />
+        <IconFace state="generated" src={src} />
       </div>
     </div>
   )
@@ -361,20 +376,61 @@ function MacOSIcon({
   state,
   selected,
   onSelect,
+  variants,
+  baseIconSrc,
 }: {
   state: IconState
   selected: number | null
   onSelect: (i: number) => void
+  variants: (string | null)[]
+  baseIconSrc?: string | null
 }) {
   if (state === "refine") {
-    return <SingleRefineIcon />
+    return <SingleRefineIcon src={baseIconSrc} />
   }
   if (state === "generated") {
-    return <VariantPicker selected={selected} onSelect={onSelect} />
+    return <VariantPicker selected={selected} onSelect={onSelect} variants={variants} />
   }
   return <IconStack state={state} />
 }
 
+// ── Title-bar status (progress line + compact label) ─────────────────────────
+
+function TitleBarStatus({
+  label,
+  fraction,
+  isError,
+}: {
+  label: string
+  fraction: number
+  isError: boolean
+}) {
+  if (!label) return null
+  return (
+    <>
+      {/* 2px progress line pinned to the very top edge. */}
+      {!isError && (
+        <div className="absolute top-0 left-0 right-0 h-[2px] z-50 overflow-hidden">
+          <div
+            className="h-full bg-primary/70 transition-all duration-300 ease-out"
+            style={{ width: `${Math.round(fraction * 100)}%` }}
+          />
+        </div>
+      )}
+      {/* Small label centered in the 56px title bar. */}
+      <div className="absolute top-0 left-0 right-0 h-14 flex items-center justify-center pointer-events-none z-40">
+        <span
+          className={cn(
+            "text-[11px] tabular-nums select-none",
+            isError ? "text-destructive" : "text-muted-foreground/60",
+          )}
+        >
+          {isError ? label : `${label} · ${Math.round(fraction * 100)}%`}
+        </span>
+      </div>
+    </>
+  )
+}
 
 // ── Prompt input area ─────────────────────────────────────────────────────────
 
@@ -388,6 +444,8 @@ function PromptInput({
   primaryEnabled,
   inputDisabled,
   placeholder,
+  attachments,
+  onAttachmentsChange,
 }: {
   value: string
   onChange: (v: string) => void
@@ -396,10 +454,11 @@ function PromptInput({
   primaryEnabled: boolean
   inputDisabled: boolean
   placeholder: string
+  attachments: string[]
+  onAttachmentsChange: (attachments: string[]) => void
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [attachments, setAttachments] = useState<string[]>([])
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -411,15 +470,15 @@ function PromptInput({
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? [])
-    files.forEach((file) => {
-      const url = URL.createObjectURL(file)
-      setAttachments((prev) => [...prev, url])
-    })
+    const newUrls = files.map((file) => URL.createObjectURL(file))
+    onAttachmentsChange([...attachments, ...newUrls])
     e.target.value = ""
   }
 
   const removeAttachment = (index: number) => {
-    setAttachments((prev) => prev.filter((_, i) => i !== index))
+    const removed = attachments[index]
+    URL.revokeObjectURL(removed)
+    onAttachmentsChange(attachments.filter((_, i) => i !== index))
   }
 
   return (
@@ -545,35 +604,65 @@ function PromptInput({
 function AppContent() {
   const [iconState, setIconState] = useState<IconState>("idle")
   const [prompt, setPrompt] = useState("")
+  const [attachments, setAttachments] = useState<string[]>([])
   const [selectedVariant, setSelectedVariant] = useState<number | null>(null)
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [baseIconSrc, setBaseIconSrc] = useState<string | null>(null)
   const resumeAfterCancelRef = useRef<ResumeAfterCancel>("idle")
+
+  const pipeline = useIconPipeline()
+
+  // Sync iconState with pipeline status changes.
+  useEffect(() => {
+    if (pipeline.status === "done") {
+      const hasAny = pipeline.variants.some((v) => v !== null)
+      setIconState(hasAny ? "generated" : "idle")
+    } else if (pipeline.status === "error") {
+      // Restore the icon display to what it was before generation started
+      // (the error message stays visible in the status bar).
+      setIconState(resumeAfterCancelRef.current)
+    }
+  }, [pipeline.status]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const startGeneration = () => {
     if (!prompt.trim() || iconState === "generating") return
-    if (timerRef.current) clearTimeout(timerRef.current)
     resumeAfterCancelRef.current =
       iconState === "refine" ? "refine" : iconState === "generated" ? "generated" : "idle"
     setSelectedVariant(null)
     setIconState("generating")
-    timerRef.current = setTimeout(() => {
-      setIconState("generated")
-    }, 3500)
+    pipeline.generate(prompt, attachments[0])
   }
 
   const stopGeneration = () => {
-    if (timerRef.current) {
-      clearTimeout(timerRef.current)
-      timerRef.current = null
-    }
+    pipeline.cancel()
     setIconState(resumeAfterCancelRef.current)
   }
 
   const confirmSelectedVariant = () => {
     if (iconState !== "generated" || selectedVariant === null) return
+    setBaseIconSrc(pipeline.variants[selectedVariant])
     setIconState("refine")
     setSelectedVariant(null)
     setPrompt("")
+  }
+
+  const handleSave = async () => {
+    const src =
+      iconState === "refine"
+        ? baseIconSrc
+        : selectedVariant !== null
+          ? pipeline.variants[selectedVariant]
+          : null
+    if (!src) return
+
+    try {
+      // Fetch the object URL and convert to Uint8Array for IPC transfer.
+      const response = await fetch(src)
+      const buffer = await response.arrayBuffer()
+      const imageData = new Uint8Array(buffer)
+      await ipc.app.SaveIcon({ imageData })
+    } catch {
+      // Silently ignore cancellation or IPC errors.
+    }
   }
 
   const inputPlaceholder =
@@ -614,16 +703,32 @@ function AppContent() {
   const canSave =
     (iconState === "generated" && selectedVariant !== null) || iconState === "refine"
 
+  const showStatus =
+    (pipeline.status === "downloading" ||
+      pipeline.status === "generating" ||
+      pipeline.status === "error") &&
+    pipeline.progress.label !== ""
+
   return (
     <div className="dark flex flex-col h-screen bg-background text-foreground overflow-hidden">
       <SquircleClipDefs />
-      {/* macOS traffic-light spacer. */}
+      {/* macOS traffic-light spacer (also serves as the drag region). */}
       <div className="draggable" />
+
+      {/* Compact title-bar status: progress line + label. */}
+      {showStatus && (
+        <TitleBarStatus
+          label={pipeline.progress.label}
+          fraction={pipeline.progress.fraction}
+          isError={pipeline.status === "error"}
+        />
+      )}
 
       {/* Save button — top right corner. */}
       <div className="absolute top-3 right-3 z-50">
         <button
           disabled={!canSave}
+          onClick={handleSave}
           className={cn(
             "flex items-center gap-2 px-4 h-8 rounded-lg text-sm font-medium transition-all duration-200 non-draggable",
             canSave
@@ -642,22 +747,24 @@ function AppContent() {
           state={iconState}
           selected={selectedVariant}
           onSelect={setSelectedVariant}
+          variants={pipeline.variants}
+          baseIconSrc={baseIconSrc}
         />
       </div>
 
       {/* Bottom area — input, pushed to the bottom. */}
       <div className="flex flex-1 flex-col items-center justify-end gap-6 px-4 pb-4">
-        <div className="flex flex-col items-center gap-6 w-full">
-          <PromptInput
-            value={prompt}
-            onChange={setPrompt}
-            primaryAction={primaryAction}
-            onPrimary={onPrimary}
-            primaryEnabled={primaryEnabled}
-            inputDisabled={iconState === "generating"}
-            placeholder={inputPlaceholder}
-          />
-        </div>
+        <PromptInput
+          value={prompt}
+          onChange={setPrompt}
+          primaryAction={primaryAction}
+          onPrimary={onPrimary}
+          primaryEnabled={primaryEnabled}
+          inputDisabled={iconState === "generating"}
+          placeholder={inputPlaceholder}
+          attachments={attachments}
+          onAttachmentsChange={setAttachments}
+        />
       </div>
     </div>
   )

@@ -6,6 +6,17 @@ message SetThemeRequest {
   string theme = 1;
 }
 
+message SaveIconRequest {
+  // 1024×1024 PNG bytes with squircle mask pre-applied.
+  bytes image_data = 1;
+}
+
+message SaveIconResponse {
+  string saved_path = 1;
+  bool canceled = 2;
+}
+
 service AppService {
   rpc SetTheme(SetThemeRequest) returns (google.protobuf.Empty);
+  rpc SaveIcon(SaveIconRequest) returns (SaveIconResponse);
 }
