@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "IconMaker",
+    "name": "Icon Maker",
     "version": {
       "major": "1",
       "minor": "0",
@@ -15,11 +15,11 @@
       "macOS": {
         "icon": "assets/app.icns",
         "bundleID": "com.company.IconMaker",
-        "codesignIdentity": "",
+        "codesignIdentity": "${MAC_CODESIGN_IDENTITY}",
         "codesignEntitlements": "assets/entitlements.plist",
-        "teamID": "",
-        "appleID": "",
-        "password": "",
+        "teamID": "${MAC_TEAM_ID}",
+        "appleID": "${MAC_APPLE_ID}",
+        "password": "${MAC_APPLE_PASSWORD}",
         "installer": {
           "dmg": {
             "name": "",
