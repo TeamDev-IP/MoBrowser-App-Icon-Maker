@@ -14,7 +14,7 @@
     "bundle": {
       "macOS": {
         "icon": "assets/app.icns",
-        "bundleID": "com.company.IconMaker",
+        "bundleID": "com.teamdev.IconMaker",
         "codesignIdentity": "${MAC_CODESIGN_IDENTITY}",
         "codesignEntitlements": "assets/entitlements.plist",
         "teamID": "${MAC_TEAM_ID}",
