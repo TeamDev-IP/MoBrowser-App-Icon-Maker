@@ -60,7 +60,7 @@ jobs:
           security list-keychain -d user -s "$KEYCHAIN_PATH"
 
       - name: Build release package
-        run: npm run build
+        run: npm run build -- --verbose
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
