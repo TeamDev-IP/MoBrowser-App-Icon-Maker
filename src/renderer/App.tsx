@@ -704,9 +704,7 @@ function AppContent() {
     (iconState === "generated" && selectedVariant !== null) || iconState === "refine"
 
   const showStatus =
-    (pipeline.status === "downloading" ||
-      pipeline.status === "generating" ||
-      pipeline.status === "error") &&
+    (pipeline.status === "downloading" || pipeline.status === "error") &&
     pipeline.progress.label !== ""
 
   return (

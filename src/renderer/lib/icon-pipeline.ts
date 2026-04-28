@@ -123,6 +123,10 @@ async function applySquircleAndUpscale(blob: Blob): Promise<string> {
   return URL.createObjectURL(resultBlob)
 }
 
+// Persists across generate() calls — once the model is loaded its weights stay
+// in memory, so there's nothing to download on subsequent runs.
+let modelIsLoaded = false
+
 // ── Hook ───────────────────────────────────────────────────────────────────
 
 export function useIconPipeline(): IconPipeline {
@@ -157,14 +161,17 @@ export function useIconPipeline(): IconPipeline {
       setVariants([null, null, null])
 
       // ── Phase 1: ensure model is loaded ─────────────────────────────────
-      setStatus("downloading")
-      setProgress({ fraction: 0, label: "Downloading model…" })
+      if (!modelIsLoaded) {
+        setStatus("downloading")
+        setProgress({ fraction: 0, label: "Downloading model…" })
+      }
 
       try {
         const makeLoadOptions = (backend: "webgpu" | "wasm", label: string) => ({
           backendPreference: [backend] as ("webgpu" | "wasm")[],
           tokenizerProvider: getTokenizerProvider(),
           onProgress: (p: { pct?: number; bytesDownloaded?: number; totalBytesExpected?: number }) => {
+            if (modelIsLoaded) return
             const frac = p.pct != null ? p.pct / 100 : 0
             const downloaded = p.bytesDownloaded ?? 0
             const total = p.totalBytesExpected ?? 0
@@ -194,6 +201,8 @@ export function useIconPipeline(): IconPipeline {
           setProgress({ fraction: 0, label: `Failed to load model: ${loadResult.message ?? loadResult.reason}` })
           return
         }
+
+        modelIsLoaded = true
 
         if (cancelledRef.current) {
           setStatus("idle")
