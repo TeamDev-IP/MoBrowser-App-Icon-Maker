@@ -1,4 +1,4 @@
-import { app, BrowserWindow, desktop, ipc, Theme } from '@mobrowser/api';
+import { app, BrowserWindow, desktop, ipc, prefs, Theme } from '@mobrowser/api';
 import { exec } from 'node:child_process';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
@@ -6,15 +6,24 @@ import * as os from 'node:os';
 import {
   GenerateIconRequest,
   GenerateIconResponse,
+  GetOpenAIApiKeyStatusRequest,
+  GetOpenAIApiKeyStatusResponse,
   SaveIconRequest,
   SaveIconResponse,
+  SetOpenAIApiKeyRequest,
+  SetOpenAIApiKeyResponse,
   SetThemeRequest,
   SetUnsavedIconStateRequest,
   ShowPathInFinderRequest,
 } from './gen/app';
 import { AppService } from './gen/ipc_service';
 import { buildPrompt } from './lib/prompt-builder';
+import type { ProviderName } from './lib/image-provider';
 import { getProvider } from './lib/image-provider';
+import {
+  hasOpenAIApiKeyInPrefs,
+  OPENAI_API_KEY_PREFS_KEY,
+} from './lib/openai-api-key';
 
 // ---------------------------------------------------------------------------
 // Icon resize constants
@@ -232,5 +241,30 @@ ipc.registerService(AppService({
       const message = err instanceof Error ? err.message : String(err);
       return { images: [], error: message };
     }
+  },
+
+  async GetOpenAIApiKeyStatus(
+    _request: GetOpenAIApiKeyStatusRequest
+  ): Promise<GetOpenAIApiKeyStatusResponse> {
+    const name =
+      (process.env.ICON_PROVIDER as ProviderName | undefined) ?? 'openai';
+    return {
+      openaiKeyRequired: name === 'openai',
+      hasOpenaiKey: hasOpenAIApiKeyInPrefs(),
+    };
+  },
+
+  async SetOpenAIApiKey(
+    request: SetOpenAIApiKeyRequest
+  ): Promise<SetOpenAIApiKeyResponse> {
+    const key = request.apiKey.trim();
+    if (!key) {
+      return { error: 'API key cannot be empty.' };
+    }
+    prefs.setString(OPENAI_API_KEY_PREFS_KEY, key);
+    if (!prefs.persist()) {
+      return { error: 'Could not save preferences to disk.' };
+    }
+    return { error: '' };
   },
 }));

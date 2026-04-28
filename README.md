@@ -39,15 +39,14 @@ npm run gen
 
 The backend is selected with **`ICON_PROVIDER`**:
 
-| Value              | API key          | Notes                                                                                                                           |
-| ------------------ | ---------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `openai` (default) | `OPENAI_API_KEY` | Uses OpenAI image generation (`gpt-image-1`).                                                                                   |
-| `mock`             | none             | Placeholder images for UI testing without billing.                                                                              |
+| Value              | API key | Notes                                                                                                                           |
+| ------------------ | ------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `openai` (default) | App preferences | On first launch an in-app dialog asks for your key and stores it locally (`prefs.json`). No environment variable is used.        |
+| `mock`             | none    | Placeholder images for UI testing without billing.                                                                              |
 
-Export variables in the shell before starting the app, for example:
+Start the app as usual; when using OpenAI you will be prompted for an API key if none is saved yet:
 
 ```bash
-export OPENAI_API_KEY="sk-..."
 npm run dev
 ```
 
@@ -79,4 +78,4 @@ Light and dark appearance follow the in-app theme control (synced with the MōBr
 
 - **`src/main/`** — window, IPC, prompt building, provider selection, **`icns`** assembly.
 - **`src/renderer/`** — React UI, squircle preview, generation pipeline state.
-- **`src/main/lib/providers/`** — OpenAI, Google, and mock implementations.
+- **`src/main/lib/providers/`** — OpenAI and mock implementations.

@@ -15,6 +15,7 @@ import {
 import { cn } from "@/lib/utils"
 import { useIconPipeline } from "@/lib/icon-pipeline"
 import { ipc } from "@/gen/ipc"
+import { Input } from "@/components/ui/input"
 
 type IconState = "idle" | "generating" | "generated" | "refine"
 
@@ -453,9 +454,54 @@ function TitleBarStatus({
   )
 }
 
+// ── Generation errors ─────────────────────────────────────────────────────────
+
+/** True when the message likely indicates a bad or unauthorized OpenAI API key. */
+function generationErrorSuggestsApiKeyIssue(message: string): boolean {
+  const m = message.toLowerCase()
+  if (/\b401\b/.test(m) || /\b403\b/.test(m)) {
+    return true
+  }
+  if (m.includes("invalid_api_key")) {
+    return true
+  }
+  if (m.includes("incorrect api key")) {
+    return true
+  }
+  if (m.includes("invalid bearer")) {
+    return true
+  }
+  if (m.includes("unauthorized")) {
+    return true
+  }
+  if (m.includes("authentication") && m.includes("openai")) {
+    return true
+  }
+  if (
+    m.includes("api key") &&
+    (m.includes("invalid") ||
+      m.includes("incorrect") ||
+      m.includes("expired") ||
+      m.includes("revoked") ||
+      m.includes("not found"))
+  ) {
+    return true
+  }
+  return false
+}
+
 // ── Error modal ───────────────────────────────────────────────────────────────
 
-function ErrorModal({ message, onClose }: { message: string; onClose: () => void }) {
+function ErrorModal({
+  message,
+  onClose,
+  onUpdateApiKey,
+}: {
+  message: string
+  onClose: () => void
+  /** When set, shows a primary action to replace the stored OpenAI key. */
+  onUpdateApiKey?: () => void
+}) {
   const [copied, setCopied] = useState(false)
 
   const handleCopy = useCallback(() => {
@@ -510,8 +556,9 @@ function ErrorModal({ message, onClose }: { message: string; onClose: () => void
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-2 px-4 pb-4">
+        <div className="flex justify-end gap-2 flex-wrap px-4 pb-4">
           <button
+            type="button"
             onClick={handleCopy}
             className={cn(
               "flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium transition-all duration-150",
@@ -524,11 +571,26 @@ function ErrorModal({ message, onClose }: { message: string; onClose: () => void
             {copied ? "Copied" : "Copy"}
           </button>
           <button
+            type="button"
             onClick={onClose}
-            className="h-8 px-4 rounded-lg text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+            className={cn(
+              "h-8 px-4 rounded-lg text-xs font-medium transition-colors",
+              onUpdateApiKey
+                ? "bg-secondary/60 text-muted-foreground hover:text-foreground hover:bg-secondary"
+                : "bg-primary text-primary-foreground hover:bg-primary/90",
+            )}
           >
             Dismiss
           </button>
+          {onUpdateApiKey && (
+            <button
+              type="button"
+              onClick={onUpdateApiKey}
+              className="h-8 px-4 rounded-lg text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              Update API key
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -612,6 +674,109 @@ function SaveSuccessModal({
           >
             <FolderOpen className="w-3.5 h-3.5" />
             Show in Finder
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── OpenAI API key gate (in-app, required for the OpenAI provider) ───────────
+
+function OpenAIApiKeyModal({
+  context,
+  onSaved,
+}: {
+  context: "startup" | "replace"
+  onSaved: () => void
+}) {
+  const [value, setValue] = useState("")
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  const submit = useCallback(async () => {
+    const key = value.trim()
+    if (!key) {
+      setError("Enter your API key.")
+      return
+    }
+    setBusy(true)
+    setError(null)
+    try {
+      const res = await ipc.app.SetOpenAIApiKey({ apiKey: key })
+      if (res.error) {
+        setError(res.error)
+      } else {
+        onSaved()
+      }
+    } catch {
+      setError("Could not save the API key. Try again.")
+    } finally {
+      setBusy(false)
+    }
+  }, [value, onSaved])
+
+  const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault()
+      void submit()
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-100 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="openai-api-key-title"
+    >
+      <div className="relative w-[420px] max-w-[calc(100vw-32px)] rounded-xl border border-border bg-background shadow-2xl">
+        <div className="px-4 pt-4 pb-3 border-b border-border">
+          <h2 id="openai-api-key-title" className="text-sm font-medium text-foreground">
+            {context === "replace" ? "Update OpenAI API key" : "OpenAI API key"}
+          </h2>
+          <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
+            {context === "replace" ? (
+              <>
+                OpenAI rejected the last request (often an invalid, expired, or mistyped key). Enter a
+                valid key below; it replaces the one saved in this app&apos;s preferences.
+              </>
+            ) : (
+              <>
+                Icon generation needs a key. It is stored only in this app&apos;s preferences on your
+                computer.
+              </>
+            )}
+          </p>
+        </div>
+
+        <div className="px-4 py-3 space-y-2">
+          <Input
+            type="password"
+            autoComplete="off"
+            spellCheck={false}
+            placeholder="sk-…"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            onKeyDown={onKeyDown}
+            disabled={busy}
+            className="font-mono text-xs h-9"
+          />
+          {error && (
+            <p className="text-xs text-destructive" role="alert">
+              {error}
+            </p>
+          )}
+        </div>
+
+        <div className="flex justify-end px-4 pb-4">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void submit()}
+            className="h-8 px-4 rounded-lg text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+          >
+            {busy ? "Saving…" : "Continue"}
           </button>
         </div>
       </div>
@@ -824,10 +989,22 @@ function AppContent() {
     null
   )
   const [iconDirty, setIconDirty] = useState(false)
+  const [apiKeyModal, setApiKeyModal] = useState<"startup" | "replace" | null>(null)
   const resumeAfterCancelRef = useRef<ResumeAfterCancel>("idle")
 
   const pipeline = useIconPipeline()
   const prevPipelineStatusRef = useRef(pipeline.status)
+
+  useEffect(() => {
+    ipc.app
+      .GetOpenAIApiKeyStatus({})
+      .then((s) => {
+        if (s.openaiKeyRequired && !s.hasOpenaiKey) {
+          setApiKeyModal("startup")
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   const clearAttachments = useCallback(() => {
     setAttachments((prev) => {
@@ -965,7 +1142,18 @@ function AppContent() {
       <SquircleClipDefs />
 
       {errorMessage && (
-        <ErrorModal message={errorMessage} onClose={() => setErrorMessage(null)} />
+        <ErrorModal
+          message={errorMessage}
+          onClose={() => setErrorMessage(null)}
+          onUpdateApiKey={
+            generationErrorSuggestsApiKeyIssue(errorMessage)
+              ? () => {
+                  setErrorMessage(null)
+                  setApiKeyModal("replace")
+                }
+              : undefined
+          }
+        />
       )}
 
       {saveSuccess && (
@@ -973,6 +1161,14 @@ function AppContent() {
           folderPath={saveSuccess.folderPath}
           icnsPath={saveSuccess.icnsPath}
           onClose={() => setSaveSuccess(null)}
+        />
+      )}
+
+      {apiKeyModal !== null && (
+        <OpenAIApiKeyModal
+          key={apiKeyModal}
+          context={apiKeyModal}
+          onSaved={() => setApiKeyModal(null)}
         />
       )}
 

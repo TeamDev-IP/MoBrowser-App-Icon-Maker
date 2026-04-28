@@ -1,5 +1,10 @@
-import type { ImageProvider, GenerationRequest, GenerationResult } from "../image-provider";
+import type {
+  ImageProvider,
+  GenerationRequest,
+  GenerationResult,
+} from "../image-provider";
 import { withRetry } from "../image-provider";
+import { getResolvedOpenAIApiKey } from "../openai-api-key";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -32,31 +37,34 @@ interface ImageResponse {
  * gpt-image-1 supports n=1..10 per request, so all variants are fetched in
  * a single API call.
  *
- * Required environment variable: OPENAI_API_KEY
+ * API key: read from application preferences only.
  */
 export class OpenAIProvider implements ImageProvider {
-  private readonly apiKey: string;
-
-  constructor() {
-    const key = process.env.OPENAI_API_KEY;
-    if (!key) {
+  async generate(request: GenerationRequest): Promise<GenerationResult> {
+    const apiKey = getResolvedOpenAIApiKey();
+    if (!apiKey) {
       throw new Error(
-        "OPENAI_API_KEY environment variable is not set. " +
-          "Export it in your shell before launching the app."
+        "No OpenAI API key. Use the startup dialog or save a key in app preferences."
       );
     }
-    this.apiKey = key;
-  }
 
-  async generate(request: GenerationRequest): Promise<GenerationResult> {
     const images = request.referenceImageB64
-      ? await this.editBatch(request.positivePrompt, request.referenceImageB64, request.count)
-      : await this.generateBatch(request.positivePrompt, request.count);
+      ? await this.editBatch(
+          apiKey,
+          request.positivePrompt,
+          request.referenceImageB64,
+          request.count
+        )
+      : await this.generateBatch(apiKey, request.positivePrompt, request.count);
     return { images };
   }
 
   /** Text-to-image via /v1/images/generations. */
-  private generateBatch(prompt: string, n: number): Promise<string[]> {
+  private generateBatch(
+    apiKey: string,
+    prompt: string,
+    n: number
+  ): Promise<string[]> {
     return withRetry(async () => {
       const controller = new AbortController();
       const timeoutId = setTimeout(
@@ -70,7 +78,7 @@ export class OpenAIProvider implements ImageProvider {
           signal: controller.signal,
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${this.apiKey}`,
+            Authorization: `Bearer ${apiKey}`,
           },
           body: JSON.stringify({
             model: "gpt-image-1",
@@ -98,7 +106,12 @@ export class OpenAIProvider implements ImageProvider {
   }
 
   /** Image-to-image edit via /v1/images/edits. Sends the reference as multipart. */
-  private editBatch(prompt: string, referenceB64: string, n: number): Promise<string[]> {
+  private editBatch(
+    apiKey: string,
+    prompt: string,
+    referenceB64: string,
+    n: number
+  ): Promise<string[]> {
     return withRetry(async () => {
       const controller = new AbortController();
       const timeoutId = setTimeout(
@@ -124,7 +137,7 @@ export class OpenAIProvider implements ImageProvider {
           method: "POST",
           signal: controller.signal,
           headers: {
-            Authorization: `Bearer ${this.apiKey}`,
+            Authorization: `Bearer ${apiKey}`,
           },
           body: form,
         });

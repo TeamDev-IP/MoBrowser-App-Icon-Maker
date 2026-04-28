@@ -1,5 +1,4 @@
 import { OpenAIProvider } from "./providers/openai";
-import { GoogleImagenProvider } from "./providers/google-imagen";
 import { MockImageProvider } from "./providers/mock";
 
 // ---------------------------------------------------------------------------
@@ -32,7 +31,7 @@ export interface ImageProvider {
 // Supported providers
 // ---------------------------------------------------------------------------
 
-export type ProviderName = "openai" | "google-imagen" | "mock";
+export type ProviderName = "openai" | "mock";
 
 // ---------------------------------------------------------------------------
 // Lazy singleton — one provider instance per process lifetime
@@ -44,12 +43,11 @@ let _activeProvider: ImageProvider | null = null;
  * Return the active provider, instantiating it on first call.
  *
  * The provider is selected by the `ICON_PROVIDER` environment variable
- * (`"openai"`, `"google-imagen"`, or `"mock"`).  Defaults to `"openai"`.
+ * (`"openai"` or `"mock"`).  Defaults to `"openai"`.
  *
- * Required environment variables:
- *   - openai:         OPENAI_API_KEY
- *   - google-imagen:  GOOGLE_API_KEY
- *   - mock:           none (placeholder images only, for local testing)
+ * Required configuration:
+ *   - openai:  API key in app preferences (startup prompt saves it there)
+ *   - mock:    none (placeholder images only, for local testing)
  */
 export function getProvider(): ImageProvider {
   if (_activeProvider) return _activeProvider;
@@ -61,9 +59,6 @@ export function getProvider(): ImageProvider {
   switch (name) {
     case "mock":
       created = new MockImageProvider();
-      break;
-    case "google-imagen":
-      created = new GoogleImagenProvider();
       break;
     default:
       created = new OpenAIProvider();

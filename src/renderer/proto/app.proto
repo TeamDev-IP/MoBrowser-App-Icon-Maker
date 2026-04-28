@@ -43,10 +43,30 @@ message GenerateIconResponse {
   string error = 2;
 }
 
+message GetOpenAIApiKeyStatusRequest {}
+
+message GetOpenAIApiKeyStatusResponse {
+  // True when the OpenAI provider is active (a stored API key is required).
+  bool openai_key_required = 1;
+  // True when a non-empty OpenAI API key is already stored in preferences.
+  bool has_openai_key = 2;
+}
+
+message SetOpenAIApiKeyRequest {
+  string api_key = 1;
+}
+
+message SetOpenAIApiKeyResponse {
+  // Empty on success; otherwise a short error message for the user.
+  string error = 1;
+}
+
 service AppService {
   rpc SetTheme(SetThemeRequest) returns (google.protobuf.Empty);
   rpc SetUnsavedIconState(SetUnsavedIconStateRequest) returns (google.protobuf.Empty);
   rpc SaveIcon(SaveIconRequest) returns (SaveIconResponse);
   rpc ShowPathInFinder(ShowPathInFinderRequest) returns (google.protobuf.Empty);
   rpc GenerateIcon(GenerateIconRequest) returns (GenerateIconResponse);
+  rpc GetOpenAIApiKeyStatus(GetOpenAIApiKeyStatusRequest) returns (GetOpenAIApiKeyStatusResponse);
+  rpc SetOpenAIApiKey(SetOpenAIApiKeyRequest) returns (SetOpenAIApiKeyResponse);
 }

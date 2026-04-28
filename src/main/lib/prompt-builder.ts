@@ -7,19 +7,20 @@
 const SYSTEM_PREFIX =
   "Premium macOS app icon, centered composition, single object, no text, " +
   "no background clutter, soft shadow, subtle gradient, consistent stroke width, " +
-  "rounded square canvas, Apple Human Interface Guidelines style, minimalistic, " +
+  "full-bleed square composition, artwork extends to the edges with no inset shape, " +
+  "Apple Human Interface Guidelines style, minimalistic, " +
   "clean, high contrast, 3D depth with soft lighting, glass/liquid material, " +
   "professional UI icon, SF Symbols inspired";
 
 /**
- * Concepts to steer the model away from.  Used by providers that support
- * negative prompts (e.g. Google Imagen).  For providers without native negative
- * prompt support (e.g. DALL-E 3), the positive prompt constraints do the work.
+ * Concepts to steer the model away from.  The active image provider may or may
+ * not use this string; OpenAI image models rely mainly on the positive prompt.
  */
 export const NEGATIVE_PROMPT =
   "text, letters, words, watermark, multiple objects, cluttered, low quality, " +
   "blurry, distorted, noisy, photorealistic photo, flat without depth, " +
-  "dark background, busy pattern, outer border frame, drop shadow on white";
+  "dark background, busy pattern, outer border frame, inset rounded rectangle plate, " +
+  "inner squircle bezel, UI chrome frame, drop shadow on white";
 
 export interface BuiltPrompt {
   positive: string;
