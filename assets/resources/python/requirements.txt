@@ -1,0 +1,5 @@
+torch>=2.2.0
+diffusers>=0.27.0
+accelerate>=0.27.0
+Pillow>=10.0.0
+transformers>=4.38.0

@@ -16,7 +16,23 @@ message SaveIconResponse {
   bool canceled = 2;
 }
 
+message GenerateIconRequest {
+  string prompt = 1;
+  string negative_prompt = 2;
+  // Base64-encoded PNG, no data URL prefix. Empty = no reference image.
+  string reference_image = 3;
+  // Seed for reproducibility. 0 = pick automatically.
+  int32 seed = 4;
+}
+
+message GenerateIconResponse {
+  // Base64-encoded PNG images, no data URL prefix.
+  repeated string images = 1;
+  string error = 2;
+}
+
 service AppService {
   rpc SetTheme(SetThemeRequest) returns (google.protobuf.Empty);
   rpc SaveIcon(SaveIconRequest) returns (SaveIconResponse);
+  rpc GenerateIcon(GenerateIconRequest) returns (GenerateIconResponse);
 }
