@@ -9,6 +9,7 @@ import {
   SaveIconRequest,
   SaveIconResponse,
   SetThemeRequest,
+  SetUnsavedIconStateRequest,
   ShowPathInFinderRequest,
 } from './gen/app';
 import { AppService } from './gen/ipc_service';
@@ -39,9 +40,71 @@ function run(cmd: string): Promise<void> {
   });
 }
 
+/** Normalize save dialog output to .icns path and companion .iconset directory. */
+function resolveSaveTargets(pickedPath: string): {
+  parentDir: string;
+  icnsPath: string;
+  iconsetDir: string;
+  baseName: string;
+} {
+  const resolved = path.resolve(pickedPath);
+  const parentDir = path.dirname(resolved);
+  let base = path.basename(resolved);
+  const ext = path.extname(base);
+  if (ext.toLowerCase() === '.icns') {
+    base = path.basename(base, ext);
+  }
+  if (!base || base === '.' || base === '..') {
+    base = 'App';
+  }
+  const icnsPath = path.join(parentDir, `${base}.icns`);
+  const iconsetDir = path.join(parentDir, `${base}.iconset`);
+  return { parentDir, icnsPath, iconsetDir, baseName: base };
+}
+
+async function icnsOutputsExist(icnsPath: string, iconsetDir: string): Promise<boolean> {
+  try {
+    await fs.access(icnsPath);
+    return true;
+  } catch {
+    /* not found. */
+  }
+  try {
+    const st = await fs.stat(iconsetDir);
+    return st.isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+async function removeIcnsOutputs(icnsPath: string, iconsetDir: string): Promise<void> {
+  await fs.rm(iconsetDir, { recursive: true, force: true });
+  await fs.unlink(icnsPath).catch(() => {});
+}
+
+async function buildIcnsAt(imageData: Buffer, iconsetDir: string, icnsPath: string): Promise<void> {
+  const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'iconmaker-'));
+  const srcPng = path.join(tmp, 'icon_1024.png');
+  await fs.writeFile(srcPng, Buffer.from(imageData));
+  try {
+    await fs.mkdir(iconsetDir, { recursive: true });
+    for (const [name, size] of ICON_SIZES) {
+      await run(
+        `sips -z ${size} ${size} "${srcPng}" --out "${path.join(iconsetDir, name)}"`,
+      );
+    }
+    await run(`iconutil -c icns "${iconsetDir}" --output "${icnsPath}"`);
+  } finally {
+    await fs.rm(tmp, { recursive: true, force: true });
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Window
 // ---------------------------------------------------------------------------
+
+/** Updated from the renderer when icon data exists that is not yet saved to disk. */
+let hasUnsavedIcon = false;
 
 const win = new BrowserWindow({
   url: app.url,
@@ -58,6 +121,27 @@ const win = new BrowserWindow({
 win.centerWindow();
 win.show();
 
+win.handle('close', async () => {
+  if (!hasUnsavedIcon) {
+    return 'close';
+  }
+  const result = await app.showMessageDialog({
+    parentWindow: win,
+    type: 'warning',
+    title: 'Quit without saving?',
+    message:
+      'Your icon has not been saved. If you quit now, it will be lost.',
+    buttons: [
+      { label: 'Cancel', type: 'secondary' },
+      { label: 'Quit Anyway', type: 'primary' },
+    ],
+  });
+  if (result.button.type === 'primary') {
+    return 'close';
+  }
+  return 'cancel';
+});
+
 // ---------------------------------------------------------------------------
 // IPC service
 // ---------------------------------------------------------------------------
@@ -68,41 +152,63 @@ ipc.registerService(AppService({
     return {};
   },
 
+  async SetUnsavedIconState(request: SetUnsavedIconStateRequest) {
+    hasUnsavedIcon = request.unsaved;
+    return {};
+  },
+
   async SaveIcon(request: SaveIconRequest): Promise<SaveIconResponse> {
-    const pick = await app.showOpenDialog({
-      parentWindow: win,
-      title: 'Choose where to save the icon',
-      selectionPolicy: 'directories',
-      features: { allowMultiple: false, canCreateDirectories: true },
-    });
+    let saveDialogDefault = path.join(app.getPath('userHome'), 'Desktop', 'app.icns');
 
-    if (pick.canceled) {
-      return { savedPath: '', canceled: true, icnsPath: '' };
-    }
+    for (;;) {
+      const pick = await app.showSaveDialog({
+        parentWindow: win,
+        title: 'Save icon',
+        buttonLabelSave: 'Save',
+        defaultPath: saveDialogDefault,
+        filters: [{ name: 'macOS icon', extensions: ['icns'] }],
+        features: { canCreateDirectories: true },
+      });
 
-    const saveDir = pick.paths[0];
-    const icnsPath = path.join(saveDir, 'app.icns');
-
-    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'iconmaker-'));
-    const srcPng = path.join(tmp, 'icon_1024.png');
-    await fs.writeFile(srcPng, Buffer.from(request.imageData));
-
-    try {
-      const iconsetDir = path.join(saveDir, 'icon.iconset');
-      await fs.mkdir(iconsetDir, { recursive: true });
-
-      for (const [name, size] of ICON_SIZES) {
-        await run(
-          `sips -z ${size} ${size} "${srcPng}" --out "${path.join(iconsetDir, name)}"`
-        );
+      if (pick.canceled || !pick.path) {
+        return { savedPath: '', canceled: true, icnsPath: '' };
       }
 
-      await run(`iconutil -c icns "${iconsetDir}" --output "${icnsPath}"`);
-    } finally {
-      await fs.rm(tmp, { recursive: true, force: true });
-    }
+      const { parentDir, icnsPath, iconsetDir } = resolveSaveTargets(pick.path);
 
-    return { savedPath: saveDir, canceled: false, icnsPath };
+      if (await icnsOutputsExist(icnsPath, iconsetDir)) {
+        const names = `${path.basename(icnsPath)}\n${path.basename(iconsetDir)}`;
+        const confirm = await app.showMessageDialog({
+          parentWindow: win,
+          type: 'warning',
+          title: 'Already exists',
+          message:
+            `A file or folder with this name is already in the destination folder:\n\n${names}\n\n` +
+            'Replace them, or choose another name or folder.',
+          buttons: [
+            { label: 'Cancel', type: 'secondary' },
+            { label: 'Choose Different…', type: 'regular' },
+            { label: 'Replace', type: 'primary' },
+          ],
+        });
+
+        if (confirm.button.type === 'primary') {
+          await removeIcnsOutputs(icnsPath, iconsetDir);
+          await buildIcnsAt(request.imageData, iconsetDir, icnsPath);
+          hasUnsavedIcon = false;
+          return { savedPath: parentDir, canceled: false, icnsPath };
+        }
+        if (confirm.button.type === 'regular') {
+          saveDialogDefault = icnsPath;
+          continue;
+        }
+        return { savedPath: '', canceled: true, icnsPath: '' };
+      }
+
+      await buildIcnsAt(request.imageData, iconsetDir, icnsPath);
+      hasUnsavedIcon = false;
+      return { savedPath: parentDir, canceled: false, icnsPath };
+    }
   },
 
   async ShowPathInFinder(request: ShowPathInFinderRequest) {

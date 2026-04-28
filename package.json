@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "mobrowser dev",
+    "dev:mock": "ICON_PROVIDER=mock mobrowser dev",
     "build": "mobrowser build",
     "gen": "mobrowser gen",
     "mobrowser": "mobrowser"

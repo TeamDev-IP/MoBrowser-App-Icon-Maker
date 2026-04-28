@@ -6,6 +6,11 @@ message SetThemeRequest {
   string theme = 1;
 }
 
+message SetUnsavedIconStateRequest {
+  // True while the user has icon work that has not been saved to disk.
+  bool unsaved = 1;
+}
+
 message SaveIconRequest {
   // 1024×1024 PNG bytes with squircle mask pre-applied.
   bytes image_data = 1;
@@ -14,7 +19,7 @@ message SaveIconRequest {
 message SaveIconResponse {
   string saved_path = 1;
   bool canceled = 2;
-  // Full path to app.icns when the save succeeded.
+  // Full path to the saved .icns file when the save succeeded.
   string icns_path = 3;
 }
 
@@ -40,6 +45,7 @@ message GenerateIconResponse {
 
 service AppService {
   rpc SetTheme(SetThemeRequest) returns (google.protobuf.Empty);
+  rpc SetUnsavedIconState(SetUnsavedIconStateRequest) returns (google.protobuf.Empty);
   rpc SaveIcon(SaveIconRequest) returns (SaveIconResponse);
   rpc ShowPathInFinder(ShowPathInFinderRequest) returns (google.protobuf.Empty);
   rpc GenerateIcon(GenerateIconRequest) returns (GenerateIconResponse);

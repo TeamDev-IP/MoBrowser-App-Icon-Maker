@@ -102,7 +102,7 @@ function BlueprintFace({ scanning }: { scanning: boolean }) {
             d="M 12 0 L 0 0 0 12"
             fill="none"
             stroke="white"
-            strokeOpacity="0.07"
+            strokeOpacity="0.085"
             strokeWidth="0.5"
           />
         </pattern>
@@ -113,44 +113,44 @@ function BlueprintFace({ scanning }: { scanning: boolean }) {
             d="M 36 0 L 0 0 0 36"
             fill="none"
             stroke="white"
-            strokeOpacity="0.14"
+            strokeOpacity="0.16"
             strokeWidth="0.5"
           />
         </pattern>
         {/* Scan line gradient for the generating sweep. */}
         <linearGradient id="scan-grad" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%"   stopColor="white" stopOpacity="0" />
-          <stop offset="30%"  stopColor="white" stopOpacity="0.06" />
-          <stop offset="50%"  stopColor="white" stopOpacity="0.18" />
-          <stop offset="70%"  stopColor="white" stopOpacity="0.06" />
+          <stop offset="30%"  stopColor="white" stopOpacity="0.05" />
+          <stop offset="50%"  stopColor="white" stopOpacity="0.14" />
+          <stop offset="70%"  stopColor="white" stopOpacity="0.05" />
           <stop offset="100%" stopColor="white" stopOpacity="0" />
         </linearGradient>
       </defs>
 
       {/* Background. */}
-      <rect width="144" height="144" fill="#1b1b1b" />
+      <rect width="144" height="144" fill="#2a2a2e" />
 
       {/* Grid. */}
       <rect width="144" height="144" fill="url(#bp-major)" />
 
       {/* Center dashed guidelines. */}
-      <line x1="72" y1="0"   x2="72"  y2="144" stroke="white" strokeOpacity="0.13" strokeWidth="0.75" strokeDasharray="3 3" />
-      <line x1="0"  y1="72"  x2="144" y2="72"  stroke="white" strokeOpacity="0.13" strokeWidth="0.75" strokeDasharray="3 3" />
+      <line x1="72" y1="0"   x2="72"  y2="144" stroke="white" strokeOpacity="0.15" strokeWidth="0.75" strokeDasharray="3 3" />
+      <line x1="0"  y1="72"  x2="144" y2="72"  stroke="white" strokeOpacity="0.15" strokeWidth="0.75" strokeDasharray="3 3" />
 
       {/* Inner canvas — dashed squicle (superellipse), same class of curve as the icon mask. */}
       <path
         d={BLUEPRINT_SQUICLE_D}
         fill="none"
         stroke="white"
-        strokeOpacity="0.18"
+        strokeOpacity="0.2"
         strokeWidth="0.75"
         strokeDasharray="4 3"
       />
 
       {/* Center crosshair. */}
-      <line x1="67" y1="72" x2="77" y2="72" stroke="white" strokeOpacity="0.45" strokeWidth="1" strokeLinecap="round" />
-      <line x1="72" y1="67" x2="72" y2="77" stroke="white" strokeOpacity="0.45" strokeWidth="1" strokeLinecap="round" />
-      <circle cx="72" cy="72" r="1.5" fill="white" fillOpacity="0.3" />
+      <line x1="67" y1="72" x2="77" y2="72" stroke="white" strokeOpacity="0.4" strokeWidth="1" strokeLinecap="round" />
+      <line x1="72" y1="67" x2="72" y2="77" stroke="white" strokeOpacity="0.4" strokeWidth="1" strokeLinecap="round" />
+      <circle cx="72" cy="72" r="1.5" fill="white" fillOpacity="0.28" />
 
       {/* Scanning sweep — only visible while generating. */}
       {scanning && (
@@ -168,7 +168,7 @@ function BlueprintFace({ scanning }: { scanning: boolean }) {
 
 const ICON_FACE_EDGE_DEFAULT = "rgba(255,255,255,0.08)"
 /** Dark gray rim for the idle / generating three-icon stack. */
-const ICON_STACK_EDGE = "rgba(40, 40, 45, 0.95)"
+const ICON_STACK_EDGE = "rgba(54, 54, 60, 0.9)"
 const ICON_STACK_EDGE_PX = 4
 
 /** viewBox 0–100 stroke width so the half-stroke that remains inside the clip reads as `visibleBorderPx`. */
@@ -318,7 +318,7 @@ function VariantPicker({
           <button
             key={i}
             onClick={() => onSelect(i)}
-            className="relative flex items-center justify-center overflow-visible rounded-none focus:outline-none"
+            className="group relative flex items-center justify-center overflow-visible rounded-none focus:outline-none"
             type="button"
             style={{
               width: cellPx,
@@ -336,9 +336,27 @@ function VariantPicker({
             >
               <IconFace state="generated" src={src} />
             </div>
+            {!isSelected && (
+              <svg
+                className="pointer-events-none absolute inset-0 z-10 h-full w-full overflow-visible opacity-0 transition-opacity duration-150 group-hover:opacity-100"
+                viewBox={viewBoxVb}
+                preserveAspectRatio="none"
+                overflow="visible"
+                aria-hidden
+              >
+                <path
+                  d={SQUICLE_PATH_100}
+                  fill="none"
+                  stroke="rgb(156, 163, 175)"
+                  strokeWidth={ringStrokeVb}
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                />
+              </svg>
+            )}
             {isSelected && (
               <svg
-                className="absolute inset-0 z-10 w-full h-full pointer-events-none overflow-visible"
+                className="pointer-events-none absolute inset-0 z-10 h-full w-full overflow-visible"
                 viewBox={viewBoxVb}
                 preserveAspectRatio="none"
                 overflow="visible"
@@ -415,7 +433,7 @@ function TitleBarStatus({
       {!isError && (
         <div className="absolute top-0 left-0 right-0 h-[2px] z-50 overflow-hidden">
           <div
-            className="h-full bg-primary/70 transition-all duration-300 ease-out"
+            className="h-full bg-primary/50 transition-all duration-300 ease-out"
             style={{ width: `${Math.round(fraction * 100)}%` }}
           />
         </div>
@@ -561,8 +579,12 @@ function SaveSuccessModal({
 
         <div className="px-4 py-3 space-y-2">
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Your icon was saved as <span className="text-foreground font-medium">app.icns</span> in the
-            folder below. You can open that location in Finder to copy or rename the file.
+            Your icon was saved as{" "}
+            <span className="text-foreground font-medium">
+              {icnsPath.replace(/^.*[/\\]/, "") || "app.icns"}
+            </span>{" "}
+            in the folder below. A <span className="text-foreground font-medium">.iconset</span> folder
+            with the same base name was created next to it. You can open the file in Finder from here.
           </p>
           <pre
             className="text-xs font-mono text-foreground/80 whitespace-pre-wrap break-all rounded-lg bg-secondary/40 px-3 py-2 max-h-36 overflow-y-auto select-text"
@@ -607,6 +629,8 @@ function PromptInput({
   primaryAction,
   onPrimary,
   primaryEnabled,
+  onRegenerate,
+  regenerateEnabled,
   inputDisabled,
   placeholder,
   attachments,
@@ -617,6 +641,8 @@ function PromptInput({
   primaryAction: PrimaryAction
   onPrimary: () => void
   primaryEnabled: boolean
+  onRegenerate?: () => void
+  regenerateEnabled?: boolean
   inputDisabled: boolean
   placeholder: string
   attachments: string[]
@@ -717,48 +743,67 @@ function PromptInput({
           ))}
         </div>
 
-        <button
-          type="button"
-          onClick={onPrimary}
-          disabled={!primaryEnabled}
-          className={cn(
-            "flex items-center justify-center gap-0.5 rounded-lg transition-all duration-200 shrink-0 h-8 font-medium text-xs",
-            primaryAction === "select" ? "min-w-[88px] px-3" : "w-8 min-w-8 px-0",
-            primaryEnabled
-              ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
-              : "bg-muted text-muted-foreground cursor-not-allowed"
+        <div className="flex items-center gap-2 shrink-0">
+          {onRegenerate != null && (
+            <button
+              type="button"
+              onClick={onRegenerate}
+              disabled={!regenerateEnabled}
+              className={cn(
+                "flex items-center justify-center rounded-lg transition-all duration-200 shrink-0 w-8 min-w-8 h-8 px-0",
+                regenerateEnabled
+                  ? "bg-secondary/70 text-foreground hover:bg-secondary shadow-sm"
+                  : "bg-muted text-muted-foreground cursor-not-allowed"
+              )}
+              title="Regenerate: three new variants from the same prompt"
+              aria-label="Regenerate"
+            >
+              <RefreshCw className="w-4 h-4" strokeWidth={2.5} />
+            </button>
           )}
-          title={
-            primaryAction === "stop"
-              ? "Stop generation"
-              : primaryAction === "refresh"
-                ? "Re-generate all variants (Enter)"
-                : primaryAction === "select"
-                  ? "Use this design as the base: remove other variants, then describe how to build three new ones"
-                  : "Generate (Enter)"
-          }
-          aria-label={
-            primaryAction === "stop"
-              ? "Stop"
-              : primaryAction === "refresh"
-                ? "Refresh"
-                : primaryAction === "select"
-                  ? "Select"
-                  : "Submit"
-          }
-        >
-          {primaryAction === "stop" && (
-            <span className="w-2.5 h-2.5 rounded-[1px] bg-current" aria-hidden />
-          )}
-          {primaryAction === "refresh" && <RefreshCw className="w-4 h-4" strokeWidth={2.5} />}
-          {primaryAction === "submit" && <ArrowUp className="w-4 h-4" strokeWidth={2.5} />}
-          {primaryAction === "select" && (
-            <>
-              <span>Select</span>
-              <ChevronRight className="w-3.5 h-3.5" strokeWidth={2.5} />
-            </>
-          )}
-        </button>
+          <button
+            type="button"
+            onClick={onPrimary}
+            disabled={!primaryEnabled}
+            className={cn(
+              "flex items-center justify-center gap-0.5 rounded-lg transition-all duration-200 shrink-0 h-8 font-medium text-xs",
+              primaryAction === "select" ? "min-w-[88px] px-3" : "w-8 min-w-8 px-0",
+              primaryEnabled
+                ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
+                : "bg-muted text-muted-foreground cursor-not-allowed"
+            )}
+            title={
+              primaryAction === "stop"
+                ? "Stop generation"
+                : primaryAction === "refresh"
+                  ? "Re-generate all variants (Enter)"
+                  : primaryAction === "select"
+                    ? "Use this design as the base: remove other variants, then describe how to build three new ones"
+                    : "Generate (Enter)"
+            }
+            aria-label={
+              primaryAction === "stop"
+                ? "Stop"
+                : primaryAction === "refresh"
+                  ? "Refresh"
+                  : primaryAction === "select"
+                    ? "Select"
+                    : "Submit"
+            }
+          >
+            {primaryAction === "stop" && (
+              <span className="w-2.5 h-2.5 rounded-[1px] bg-current" aria-hidden />
+            )}
+            {primaryAction === "refresh" && <RefreshCw className="w-4 h-4" strokeWidth={2.5} />}
+            {primaryAction === "submit" && <ArrowUp className="w-4 h-4" strokeWidth={2.5} />}
+            {primaryAction === "select" && (
+              <>
+                <span>Select</span>
+                <ChevronRight className="w-3.5 h-3.5" strokeWidth={2.5} />
+              </>
+            )}
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -778,9 +823,18 @@ function AppContent() {
   const [saveSuccess, setSaveSuccess] = useState<{ folderPath: string; icnsPath: string } | null>(
     null
   )
+  const [iconDirty, setIconDirty] = useState(false)
   const resumeAfterCancelRef = useRef<ResumeAfterCancel>("idle")
 
   const pipeline = useIconPipeline()
+  const prevPipelineStatusRef = useRef(pipeline.status)
+
+  const clearAttachments = useCallback(() => {
+    setAttachments((prev) => {
+      for (const url of prev) URL.revokeObjectURL(url)
+      return []
+    })
+  }, [])
 
   // Sync iconState with pipeline status changes.
   useEffect(() => {
@@ -795,6 +849,20 @@ function AppContent() {
       setErrorMessage(raw.startsWith("Error: ") ? raw.slice(7) : raw)
     }
   }, [pipeline.status]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const was = prevPipelineStatusRef.current
+    prevPipelineStatusRef.current = pipeline.status
+    if (pipeline.status !== "done") return
+    if (!pipeline.variants.some((v) => v !== null)) return
+    if (was !== "done") {
+      setIconDirty(true)
+    }
+  }, [pipeline.status, pipeline.variants])
+
+  useEffect(() => {
+    ipc.app.SetUnsavedIconState({ unsaved: iconDirty }).catch(() => {})
+  }, [iconDirty])
 
   const startGeneration = () => {
     if (!prompt.trim() || iconState === "generating") return
@@ -815,11 +883,13 @@ function AppContent() {
 
   const confirmSelectedVariant = () => {
     if (iconState !== "generated" || selectedVariant === null) return
+    setIconDirty(true)
     setBaseIconSrc(pipeline.variants[selectedVariant])
     setRawBaseIconSrc(pipeline.rawVariants[selectedVariant])
     setIconState("refine")
     setSelectedVariant(null)
     setPrompt("")
+    clearAttachments()
   }
 
   const handleSave = async () => {
@@ -842,6 +912,7 @@ function AppContent() {
       const imageData = new Uint8Array(buffer)
       const saved = await ipc.app.SaveIcon({ imageData })
       if (!saved.canceled && saved.icnsPath) {
+        setIconDirty(false)
         setSaveSuccess({ folderPath: saved.savedPath, icnsPath: saved.icnsPath })
       }
     } catch {
@@ -884,8 +955,7 @@ function AppContent() {
     startGeneration()
   }
 
-  const canSave =
-    (iconState === "generated" && selectedVariant !== null) || iconState === "refine"
+  const canSave = iconState === "refine" && rawBaseIconSrc != null
 
   const showStatus =
     pipeline.status === "downloading" && pipeline.progress.label !== ""
@@ -954,6 +1024,8 @@ function AppContent() {
           primaryAction={primaryAction}
           onPrimary={onPrimary}
           primaryEnabled={primaryEnabled}
+          onRegenerate={primaryAction === "select" ? startGeneration : undefined}
+          regenerateEnabled={prompt.trim().length > 0}
           inputDisabled={iconState === "generating"}
           placeholder={inputPlaceholder}
           attachments={attachments}
