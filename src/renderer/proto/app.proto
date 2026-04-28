@@ -14,6 +14,13 @@ message SaveIconRequest {
 message SaveIconResponse {
   string saved_path = 1;
   bool canceled = 2;
+  // Full path to app.icns when the save succeeded.
+  string icns_path = 3;
+}
+
+message ShowPathInFinderRequest {
+  // Absolute path to a file or folder to reveal in Finder.
+  string path = 1;
 }
 
 message GenerateIconRequest {
@@ -34,5 +41,6 @@ message GenerateIconResponse {
 service AppService {
   rpc SetTheme(SetThemeRequest) returns (google.protobuf.Empty);
   rpc SaveIcon(SaveIconRequest) returns (SaveIconResponse);
+  rpc ShowPathInFinder(ShowPathInFinderRequest) returns (google.protobuf.Empty);
   rpc GenerateIcon(GenerateIconRequest) returns (GenerateIconResponse);
 }

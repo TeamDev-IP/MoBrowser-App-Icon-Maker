@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, type CSSProperties, type ChangeEvent, type KeyboardEvent } from "react"
+import { useState, useRef, useEffect, useCallback, type CSSProperties, type ChangeEvent, type KeyboardEvent } from "react"
 import { ThemeProvider } from "@/components/theme-provider"
 import {
   ImagePlus,
@@ -8,6 +8,9 @@ import {
   X,
   RefreshCw,
   ChevronRight,
+  Copy,
+  Check,
+  FolderOpen,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useIconPipeline } from "@/lib/icon-pipeline"
@@ -432,6 +435,168 @@ function TitleBarStatus({
   )
 }
 
+// ── Error modal ───────────────────────────────────────────────────────────────
+
+function ErrorModal({ message, onClose }: { message: string; onClose: () => void }) {
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = useCallback(() => {
+    navigator.clipboard.writeText(message).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }, [message])
+
+  // Close on Escape.
+  useEffect(() => {
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.key === "Escape") onClose()
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [onClose])
+
+  return (
+    /* Backdrop */
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      {/* Panel — stop propagation so clicks inside don't close the modal. */}
+      <div
+        className="relative w-[420px] max-w-[calc(100vw-32px)] rounded-xl border border-border bg-background shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-border">
+          <span className="text-sm font-medium text-destructive">Generation failed</span>
+          <button
+            onClick={onClose}
+            className="flex items-center justify-center w-6 h-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Error text — selectable, scrollable. */}
+        <div className="px-4 py-3">
+          <pre
+            className={cn(
+              "text-xs font-mono text-foreground/80 whitespace-pre-wrap break-all",
+              "max-h-52 overflow-y-auto select-text",
+            )}
+            style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(255,255,255,0.15) transparent" }}
+          >
+            {message}
+          </pre>
+        </div>
+
+        {/* Footer */}
+        <div className="flex justify-end gap-2 px-4 pb-4">
+          <button
+            onClick={handleCopy}
+            className={cn(
+              "flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium transition-all duration-150",
+              copied
+                ? "bg-emerald-500/20 text-emerald-400"
+                : "bg-secondary/60 text-muted-foreground hover:text-foreground hover:bg-secondary",
+            )}
+          >
+            {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+            {copied ? "Copied" : "Copy"}
+          </button>
+          <button
+            onClick={onClose}
+            className="h-8 px-4 rounded-lg text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+          >
+            Dismiss
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Save success modal ───────────────────────────────────────────────────────
+
+function SaveSuccessModal({
+  folderPath,
+  icnsPath,
+  onClose,
+}: {
+  folderPath: string
+  icnsPath: string
+  onClose: () => void
+}) {
+  useEffect(() => {
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.key === "Escape") onClose()
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [onClose])
+
+  const openInFinder = () => {
+    ipc.app.ShowPathInFinder({ path: icnsPath }).catch(() => {})
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-[420px] max-w-[calc(100vw-32px)] rounded-xl border border-border bg-background shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-border">
+          <span className="text-sm font-medium text-foreground">Icon saved</span>
+          <button
+            onClick={onClose}
+            className="flex items-center justify-center w-6 h-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="px-4 py-3 space-y-2">
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Your icon was saved as <span className="text-foreground font-medium">app.icns</span> in the
+            folder below. You can open that location in Finder to copy or rename the file.
+          </p>
+          <pre
+            className="text-xs font-mono text-foreground/80 whitespace-pre-wrap break-all rounded-lg bg-secondary/40 px-3 py-2 max-h-36 overflow-y-auto select-text"
+            style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(255,255,255,0.15) transparent" }}
+          >
+            {folderPath}
+          </pre>
+        </div>
+
+        <div className="flex justify-end gap-2 px-4 pb-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="h-8 px-4 rounded-lg text-xs font-medium bg-secondary/60 text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+          >
+            Close
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              openInFinder()
+              onClose()
+            }}
+            className="flex items-center gap-1.5 h-8 px-4 rounded-lg text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+          >
+            <FolderOpen className="w-3.5 h-3.5" />
+            Show in Finder
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Prompt input area ─────────────────────────────────────────────────────────
 
 type PrimaryAction = "submit" | "stop" | "refresh" | "select"
@@ -485,7 +650,7 @@ function PromptInput({
     <div
       className={cn(
         "w-full rounded-lg border border-border bg-secondary/40 transition-all duration-200",
-        "focus-within:border-border/80 focus-within:bg-secondary/60"
+        "focus-within:border-border/80 focus-within:bg-secondary/60 p-3"
       )}
     >
       {/* Textarea. */}
@@ -499,7 +664,7 @@ function PromptInput({
         rows={2}
         className={cn(
           "w-full bg-transparent resize-none border-0 outline-none ring-0",
-          "px-4 pt-3.5 pb-2 text-sm text-foreground placeholder:text-muted-foreground",
+          "text-sm text-foreground placeholder:text-muted-foreground",
           "leading-relaxed overflow-y-auto",
           inputDisabled && "opacity-60"
         )}
@@ -507,7 +672,7 @@ function PromptInput({
       />
 
       {/* Bottom action bar. */}
-      <div className="flex items-center justify-between px-3 pb-3 pt-1">
+      <div className="flex items-center justify-between pt-1">
         <div
           className={cn(
             "flex items-center gap-2",
@@ -607,6 +772,12 @@ function AppContent() {
   const [attachments, setAttachments] = useState<string[]>([])
   const [selectedVariant, setSelectedVariant] = useState<number | null>(null)
   const [baseIconSrc, setBaseIconSrc] = useState<string | null>(null)
+  // Unmasked square version of baseIconSrc, used when writing the .icns file.
+  const [rawBaseIconSrc, setRawBaseIconSrc] = useState<string | null>(null)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [saveSuccess, setSaveSuccess] = useState<{ folderPath: string; icnsPath: string } | null>(
+    null
+  )
   const resumeAfterCancelRef = useRef<ResumeAfterCancel>("idle")
 
   const pipeline = useIconPipeline()
@@ -617,9 +788,11 @@ function AppContent() {
       const hasAny = pipeline.variants.some((v) => v !== null)
       setIconState(hasAny ? "generated" : "idle")
     } else if (pipeline.status === "error") {
-      // Restore the icon display to what it was before generation started
-      // (the error message stays visible in the status bar).
+      // Restore the icon display to what it was before generation started.
       setIconState(resumeAfterCancelRef.current)
+      // Surface the error in a modal. Strip the "Error: " prefix added by the pipeline.
+      const raw = pipeline.progress.label
+      setErrorMessage(raw.startsWith("Error: ") ? raw.slice(7) : raw)
     }
   }, [pipeline.status]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -629,7 +802,10 @@ function AppContent() {
       iconState === "refine" ? "refine" : iconState === "generated" ? "generated" : "idle"
     setSelectedVariant(null)
     setIconState("generating")
-    pipeline.generate(prompt, attachments[0])
+    // In refine mode the confirmed variant is the reference; otherwise use the
+    // user-attached image (if any).
+    const referenceImage = iconState === "refine" ? (baseIconSrc ?? attachments[0]) : attachments[0]
+    pipeline.generate(prompt, referenceImage)
   }
 
   const stopGeneration = () => {
@@ -640,28 +816,36 @@ function AppContent() {
   const confirmSelectedVariant = () => {
     if (iconState !== "generated" || selectedVariant === null) return
     setBaseIconSrc(pipeline.variants[selectedVariant])
+    setRawBaseIconSrc(pipeline.rawVariants[selectedVariant])
     setIconState("refine")
     setSelectedVariant(null)
     setPrompt("")
   }
 
   const handleSave = async () => {
-    const src =
+    // Use the unmasked square image for the .icns file.  macOS applies its own
+    // squircle clip when rendering app icons in the Dock and Cmd+Tab; saving a
+    // pre-masked image (with transparent corners) causes the OS to put a gray
+    // background plate behind the icon and shrink it to ~50%.
+    const rawSrc =
       iconState === "refine"
-        ? baseIconSrc
+        ? rawBaseIconSrc
         : selectedVariant !== null
-          ? pipeline.variants[selectedVariant]
+          ? pipeline.rawVariants[selectedVariant]
           : null
-    if (!src) return
+    if (!rawSrc) return
 
     try {
       // Fetch the object URL and convert to Uint8Array for IPC transfer.
-      const response = await fetch(src)
+      const response = await fetch(rawSrc)
       const buffer = await response.arrayBuffer()
       const imageData = new Uint8Array(buffer)
-      await ipc.app.SaveIcon({ imageData })
+      const saved = await ipc.app.SaveIcon({ imageData })
+      if (!saved.canceled && saved.icnsPath) {
+        setSaveSuccess({ folderPath: saved.savedPath, icnsPath: saved.icnsPath })
+      }
     } catch {
-      // Silently ignore cancellation or IPC errors.
+      // Silently ignore IPC errors.
     }
   }
 
@@ -704,12 +888,24 @@ function AppContent() {
     (iconState === "generated" && selectedVariant !== null) || iconState === "refine"
 
   const showStatus =
-    (pipeline.status === "downloading" || pipeline.status === "error") &&
-    pipeline.progress.label !== ""
+    pipeline.status === "downloading" && pipeline.progress.label !== ""
 
   return (
     <div className="dark flex flex-col h-screen bg-background text-foreground overflow-hidden">
       <SquircleClipDefs />
+
+      {errorMessage && (
+        <ErrorModal message={errorMessage} onClose={() => setErrorMessage(null)} />
+      )}
+
+      {saveSuccess && (
+        <SaveSuccessModal
+          folderPath={saveSuccess.folderPath}
+          icnsPath={saveSuccess.icnsPath}
+          onClose={() => setSaveSuccess(null)}
+        />
+      )}
+
       {/* macOS traffic-light spacer (also serves as the drag region). */}
       <div className="draggable" />
 
