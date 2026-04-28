@@ -42,7 +42,6 @@ The backend is selected with **`ICON_PROVIDER`**:
 | Value              | API key          | Notes                                                                                                                           |
 | ------------------ | ---------------- | ------------------------------------------------------------------------------------------------------------------------------- |
 | `openai` (default) | `OPENAI_API_KEY` | Uses OpenAI image generation (`gpt-image-1`).                                                                                   |
-| `google-imagen`    | `GOOGLE_API_KEY` | Uses Google GenAI; default model is configurable with **`GOOGLE_IMAGE_MODEL`** (see `src/main/lib/providers/google-imagen.ts`). |
 | `mock`             | none             | Placeholder images for UI testing without billing.                                                                              |
 
 Export variables in the shell before starting the app, for example:
