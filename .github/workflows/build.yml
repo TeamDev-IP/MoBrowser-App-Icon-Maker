@@ -12,19 +12,19 @@ jobs:
 
     env:
       # Base64-encoded Developer ID Application certificate (.p12).
-      MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+      MAC_CERTIFICATE: ${{ secrets.MAC_CERTIFICATE }}
       # Password used to export the .p12 certificate from Keychain Access.
-      MACOS_CERTIFICATE_PWD: ${{ secrets.MACOS_CERTIFICATE_PWD }}
+      MAC_CERTIFICATE_PWD: ${{ secrets.MAC_CERTIFICATE_PWD }}
       # Password for the temporary CI keychain created during the build.
-      MACOS_KEYCHAIN_PWD: ${{ secrets.MACOS_KEYCHAIN_PWD }}
+      MAC_KEYCHAIN_PWD: ${{ secrets.MAC_KEYCHAIN_PWD }}
       # Signing identity string, e.g. "Developer ID Application: Your Name (TEAMID)".
-      MACOS_CODESIGN_IDENTITY: ${{ secrets.MACOS_CODESIGN_IDENTITY }}
+      MAC_CODESIGN_IDENTITY: ${{ secrets.MAC_CODESIGN_IDENTITY }}
       # Apple Developer Team ID (10-character string found in developer.apple.com).
-      MACOS_TEAM_ID: ${{ secrets.MACOS_TEAM_ID }}
+      MAC_TEAM_ID: ${{ secrets.MAC_TEAM_ID }}
       # Apple ID email used for notarization.
-      MACOS_APPLE_ID: ${{ secrets.MACOS_APPLE_ID }}
+      MAC_APPLE_ID: ${{ secrets.MAC_APPLE_ID }}
       # App-specific password generated at appleid.apple.com for notarization.
-      MACOS_APPLE_PASSWORD: ${{ secrets.MACOS_APPLE_PASSWORD }}
+      MAC_APPLE_PASSWORD: ${{ secrets.MAC_APPLE_PASSWORD }}
 
     steps:
       - uses: actions/checkout@v6
@@ -40,9 +40,9 @@ jobs:
       - name: Set up macOS code signing
         run: |
           KEYCHAIN_PATH=$RUNNER_TEMP/build.keychain
-          security create-keychain -p "$MACOS_KEYCHAIN_PWD" "$KEYCHAIN_PATH"
+          security create-keychain -p "$MAC_KEYCHAIN_PWD" "$KEYCHAIN_PATH"
           security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
-          security unlock-keychain -p "$MACOS_KEYCHAIN_PWD" "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$MAC_KEYCHAIN_PWD" "$KEYCHAIN_PATH"
 
           # Import necessary public certificates to keychain.
           curl https://www.apple.com/certificateauthority/AppleRootCA-G3.cer -o AppleRootCA-G3.cer
@@ -54,9 +54,9 @@ jobs:
           security import ./DeveloperIDG2CA.cer -k $KEYCHAIN_PATH
 
           # Import private certificate to keychain.
-          echo "$MACOS_CERTIFICATE" | base64 --decode > $RUNNER_TEMP/certificate.p12
-          security import "$RUNNER_TEMP/certificate.p12" -k "$KEYCHAIN_PATH" -P "$MACOS_CERTIFICATE_PWD" -T /usr/bin/codesign
-          security set-key-partition-list -S apple-tool:,apple: -s -k "$MACOS_KEYCHAIN_PWD" "$KEYCHAIN_PATH"
+          echo "$MAC_CERTIFICATE" | base64 --decode > $RUNNER_TEMP/certificate.p12
+          security import "$RUNNER_TEMP/certificate.p12" -k "$KEYCHAIN_PATH" -P "$MAC_CERTIFICATE_PWD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$MAC_KEYCHAIN_PWD" "$KEYCHAIN_PATH"
           security list-keychain -d user -s "$KEYCHAIN_PATH"
 
       - name: Build release package
