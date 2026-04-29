@@ -22,8 +22,8 @@
         "password": "${MAC_APPLE_PASSWORD}",
         "installer": {
           "dmg": {
-            "name": "Icon Maker",
-            "volumeName": "Icon Maker",
+            "name": "",
+            "volumeName": "",
             "volumeIcon": "assets/app.icns",
             "eula": "",
             "window": {
