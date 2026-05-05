@@ -8,6 +8,8 @@ import {
   GenerateIconResponse,
   GetOpenAIApiKeyStatusRequest,
   GetOpenAIApiKeyStatusResponse,
+  GetStoredOpenAIApiKeyRequest,
+  GetStoredOpenAIApiKeyResponse,
   SaveIconRequest,
   SaveIconResponse,
   SetOpenAIApiKeyRequest,
@@ -21,6 +23,7 @@ import { buildPrompt } from './lib/prompt-builder';
 import type { ProviderName } from './lib/image-provider';
 import { getProvider } from './lib/image-provider';
 import {
+  getResolvedOpenAIApiKey,
   hasOpenAIApiKeyInPrefs,
   OPENAI_API_KEY_PREFS_KEY,
 } from './lib/openai-api-key';
@@ -252,6 +255,12 @@ ipc.registerService(AppService({
       openaiKeyRequired: name === 'openai',
       hasOpenaiKey: hasOpenAIApiKeyInPrefs(),
     };
+  },
+
+  async GetStoredOpenAIApiKey(
+    _request: GetStoredOpenAIApiKeyRequest
+  ): Promise<GetStoredOpenAIApiKeyResponse> {
+    return { apiKey: getResolvedOpenAIApiKey() };
   },
 
   async SetOpenAIApiKey(

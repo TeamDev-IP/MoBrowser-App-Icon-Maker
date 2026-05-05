@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, type CSSProperties, type ChangeEvent, type KeyboardEvent } from "react"
+import { useState, useRef, useEffect, useCallback, type CSSProperties, type ChangeEvent, type KeyboardEvent, type ReactNode } from "react"
 import { ThemeProvider } from "@/components/theme-provider"
 import {
   ImagePlus,
@@ -11,6 +11,7 @@ import {
   Copy,
   Check,
   FolderOpen,
+  Settings2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useIconPipeline } from "@/lib/icon-pipeline"
@@ -681,15 +682,64 @@ function SaveSuccessModal({
   )
 }
 
-// ── OpenAI API key gate (in-app, required for the OpenAI provider) ───────────
+// ── OpenAI API key: first-launch gate vs. manage (view or change stored key) ──
 
-function OpenAIApiKeyModal({
-  context,
-  onSaved,
+/** Returns null on success; otherwise an error string for the UI. */
+async function persistOpenAIApiKey(key: string): Promise<string | null> {
+  const trimmed = key.trim()
+  try {
+    const res = await ipc.app.SetOpenAIApiKey({ apiKey: trimmed })
+    return res.error || null
+  } catch {
+    return "Could not save the API key. Try again."
+  }
+}
+
+function ApiKeyModalShell({
+  titleId,
+  title,
+  description,
+  headerTrailing,
+  children,
+  footer,
 }: {
-  context: "startup" | "replace"
-  onSaved: () => void
+  titleId: string
+  title: string
+  description: ReactNode
+  headerTrailing?: ReactNode
+  children: ReactNode
+  footer: ReactNode
 }) {
+  return (
+    <div
+      className="fixed inset-0 z-100 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+    >
+      <div className="relative w-[420px] max-w-[calc(100vw-32px)] rounded-xl border border-border bg-background shadow-2xl">
+        <div className="px-4 pt-4 pb-3 border-b border-border">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <h2 id={titleId} className="text-sm font-medium text-foreground">
+                {title}
+              </h2>
+              <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">{description}</p>
+            </div>
+            {headerTrailing != null && (
+              <div className="shrink-0 flex items-center pt-0.5 -mr-1 -mt-0.5">{headerTrailing}</div>
+            )}
+          </div>
+        </div>
+        {children}
+        {footer}
+      </div>
+    </div>
+  )
+}
+
+/** Blocking first launch: no saved key yet. Empty field, not the same as preferences. */
+function OpenAIApiKeyStartupModal({ onSaved }: { onSaved: () => void }) {
   const [value, setValue] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -702,17 +752,12 @@ function OpenAIApiKeyModal({
     }
     setBusy(true)
     setError(null)
-    try {
-      const res = await ipc.app.SetOpenAIApiKey({ apiKey: key })
-      if (res.error) {
-        setError(res.error)
-      } else {
-        onSaved()
-      }
-    } catch {
-      setError("Could not save the API key. Try again.")
-    } finally {
-      setBusy(false)
+    const errMsg = await persistOpenAIApiKey(key)
+    setBusy(false)
+    if (errMsg) {
+      setError(errMsg === "API key cannot be empty." ? "Enter your API key." : errMsg)
+    } else {
+      onSaved()
     }
   }, [value, onSaved])
 
@@ -724,51 +769,16 @@ function OpenAIApiKeyModal({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-100 flex items-center justify-center bg-black/70 backdrop-blur-sm"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="openai-api-key-title"
-    >
-      <div className="relative w-[420px] max-w-[calc(100vw-32px)] rounded-xl border border-border bg-background shadow-2xl">
-        <div className="px-4 pt-4 pb-3 border-b border-border">
-          <h2 id="openai-api-key-title" className="text-sm font-medium text-foreground">
-            {context === "replace" ? "Update OpenAI API key" : "OpenAI API key"}
-          </h2>
-          <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
-            {context === "replace" ? (
-              <>
-                OpenAI rejected the last request (often an invalid, expired, or mistyped key). Enter a
-                valid key below; it replaces the one saved in this app&apos;s preferences.
-              </>
-            ) : (
-              <>
-                Icon generation needs a key. It is stored only in this app&apos;s preferences on your
-                computer.
-              </>
-            )}
-          </p>
-        </div>
-
-        <div className="px-4 py-3 space-y-2">
-          <Input
-            type="password"
-            autoComplete="off"
-            spellCheck={false}
-            placeholder="sk-…"
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            onKeyDown={onKeyDown}
-            disabled={busy}
-            className="font-mono text-xs h-9"
-          />
-          {error && (
-            <p className="text-xs text-destructive" role="alert">
-              {error}
-            </p>
-          )}
-        </div>
-
+    <ApiKeyModalShell
+      titleId="openai-api-key-startup-title"
+      title="Add your OpenAI API key"
+      description={
+        <>
+          Icon generation uses OpenAI. Paste a key below; it is stored only in this app&apos;s
+          preferences on your computer.
+        </>
+      }
+      footer={
         <div className="flex justify-end px-4 pb-4">
           <button
             type="button"
@@ -779,8 +789,143 @@ function OpenAIApiKeyModal({
             {busy ? "Saving…" : "Continue"}
           </button>
         </div>
+      }
+    >
+      <div className="px-4 py-3 space-y-2">
+        <Input
+          type="text"
+          autoComplete="off"
+          spellCheck={false}
+          placeholder="sk-…"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={onKeyDown}
+          disabled={busy}
+          className="font-mono text-xs h-9"
+        />
+        {error && (
+          <p className="text-xs text-destructive" role="alert">
+            {error}
+          </p>
+        )}
       </div>
-    </div>
+    </ApiKeyModalShell>
+  )
+}
+
+type OpenAIApiKeyManageReason = "settings" | "authError"
+
+/** View or change the key already saved in preferences. */
+function OpenAIApiKeyManageModal({
+  reason,
+  onClose,
+}: {
+  reason: OpenAIApiKeyManageReason
+  onClose: (saved: boolean) => void
+}) {
+  const [value, setValue] = useState("")
+  const [error, setError] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    ipc.app
+      .GetStoredOpenAIApiKey({})
+      .then((r) => {
+        setValue(r.apiKey ?? "")
+      })
+      .catch(() => {})
+  }, [])
+
+  const submit = useCallback(async () => {
+    const key = value.trim()
+    if (!key) {
+      setError("Enter your API key.")
+      return
+    }
+    setBusy(true)
+    setError(null)
+    const errMsg = await persistOpenAIApiKey(key)
+    setBusy(false)
+    if (errMsg) {
+      setError(errMsg === "API key cannot be empty." ? "Enter your API key." : errMsg)
+    } else {
+      onClose(true)
+    }
+  }, [value, onClose])
+
+  const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault()
+      void submit()
+    }
+  }
+
+  const title =
+    reason === "authError" ? "Update OpenAI API key" : "OpenAI API key"
+  const description =
+    reason === "authError" ? (
+      <>
+        OpenAI rejected the last request (often an invalid, expired, or mistyped key). Enter a valid
+        key below; it replaces the one saved in this app&apos;s preferences.
+      </>
+    ) : (
+      <>
+        Here's your API key. Edit it and save to update it.
+      </>
+    )
+
+  return (
+    <ApiKeyModalShell
+      titleId={reason === "authError" ? "openai-api-key-update-title" : "openai-api-key-manage-title"}
+      title={title}
+      description={description}
+      headerTrailing={
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => onClose(false)}
+          className={cn(
+            "flex items-center justify-center h-8 w-8 rounded-lg",
+            "text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors",
+            "disabled:opacity-50 disabled:pointer-events-none"
+          )}
+          aria-label="Close"
+        >
+          <X className="w-4 h-4" strokeWidth={2} />
+        </button>
+      }
+      footer={
+        <div className="flex justify-end px-4 pb-4">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void submit()}
+            className="h-8 px-4 rounded-lg text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+          >
+            {busy ? "Saving…" : "Save"}
+          </button>
+        </div>
+      }
+    >
+      <div className="px-4 py-3 space-y-2">
+        <Input
+          type="text"
+          autoComplete="off"
+          spellCheck={false}
+          placeholder="sk-…"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={onKeyDown}
+          disabled={busy}
+          className="font-mono text-xs h-9"
+        />
+        {error && (
+          <p className="text-xs text-destructive" role="alert">
+            {error}
+          </p>
+        )}
+      </div>
+    </ApiKeyModalShell>
   )
 }
 
@@ -800,6 +945,7 @@ function PromptInput({
   placeholder,
   attachments,
   onAttachmentsChange,
+  onOpenApiKeySettings,
 }: {
   value: string
   onChange: (v: string) => void
@@ -812,6 +958,7 @@ function PromptInput({
   placeholder: string
   attachments: string[]
   onAttachmentsChange: (attachments: string[]) => void
+  onOpenApiKeySettings: () => void
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -866,7 +1013,7 @@ function PromptInput({
       <div className="flex items-center justify-between pt-1">
         <div
           className={cn(
-            "flex items-center gap-2",
+            "flex items-center gap-0.5",
             inputDisabled && "pointer-events-none opacity-60"
           )}
         >
@@ -889,6 +1036,20 @@ function PromptInput({
             title="Attach reference image"
           >
             <ImagePlus className="w-4 h-4" />
+          </button>
+
+          <button
+            type="button"
+            onClick={onOpenApiKeySettings}
+            className={cn(
+              "flex items-center justify-center w-8 h-8 rounded-lg",
+              "text-muted-foreground hover:text-foreground hover:bg-white/10",
+              "transition-colors shrink-0"
+            )}
+            title="OpenAI API key"
+            aria-label="OpenAI API key settings"
+          >
+            <Settings2 className="w-4 h-4" />
           </button>
 
           {/* Inline attachment thumbnails — same row, no height change. */}
@@ -989,7 +1150,9 @@ function AppContent() {
     null
   )
   const [iconDirty, setIconDirty] = useState(false)
-  const [apiKeyModal, setApiKeyModal] = useState<"startup" | "replace" | null>(null)
+  const [openAIApiKeyStartupOpen, setOpenAIApiKeyStartupOpen] = useState(false)
+  const [openAIApiKeyManageReason, setOpenAIApiKeyManageReason] =
+    useState<OpenAIApiKeyManageReason | null>(null)
   const resumeAfterCancelRef = useRef<ResumeAfterCancel>("idle")
 
   const pipeline = useIconPipeline()
@@ -999,8 +1162,16 @@ function AppContent() {
     ipc.app
       .GetOpenAIApiKeyStatus({})
       .then((s) => {
-        if (s.openaiKeyRequired && !s.hasOpenaiKey) {
-          setApiKeyModal("startup")
+        const resp = s as unknown as {
+          openaiKeyRequired?: boolean
+          openai_key_required?: boolean
+          hasOpenaiKey?: boolean
+          has_openai_key?: boolean
+        }
+        const required = resp.openaiKeyRequired ?? resp.openai_key_required
+        const hasKey = resp.hasOpenaiKey ?? resp.has_openai_key
+        if (required === true && hasKey !== true) {
+          setOpenAIApiKeyStartupOpen(true)
         }
       })
       .catch(() => {})
@@ -1149,7 +1320,7 @@ function AppContent() {
             generationErrorSuggestsApiKeyIssue(errorMessage)
               ? () => {
                   setErrorMessage(null)
-                  setApiKeyModal("replace")
+                  setOpenAIApiKeyManageReason("authError")
                 }
               : undefined
           }
@@ -1164,11 +1335,17 @@ function AppContent() {
         />
       )}
 
-      {apiKeyModal !== null && (
-        <OpenAIApiKeyModal
-          key={apiKeyModal}
-          context={apiKeyModal}
-          onSaved={() => setApiKeyModal(null)}
+      {openAIApiKeyStartupOpen && (
+        <OpenAIApiKeyStartupModal onSaved={() => setOpenAIApiKeyStartupOpen(false)} />
+      )}
+      {openAIApiKeyManageReason !== null && (
+        <OpenAIApiKeyManageModal
+          key={openAIApiKeyManageReason}
+          reason={openAIApiKeyManageReason}
+          onClose={(saved) => {
+            setOpenAIApiKeyManageReason(null)
+            if (saved) setOpenAIApiKeyStartupOpen(false)
+          }}
         />
       )}
 
@@ -1226,6 +1403,7 @@ function AppContent() {
           placeholder={inputPlaceholder}
           attachments={attachments}
           onAttachmentsChange={setAttachments}
+          onOpenApiKeySettings={() => setOpenAIApiKeyManageReason("settings")}
         />
       </div>
     </div>
