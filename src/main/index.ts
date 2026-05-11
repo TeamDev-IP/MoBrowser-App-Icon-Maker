@@ -112,6 +112,9 @@ async function buildIcnsAt(imageData: Buffer, iconsetDir: string, icnsPath: stri
   }
 }
 
+// Set the theme to dark by default.
+app.setTheme('dark');
+
 // ---------------------------------------------------------------------------
 // Window
 // ---------------------------------------------------------------------------
