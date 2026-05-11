@@ -68,6 +68,11 @@ message GetStoredOpenAIApiKeyResponse {
   string api_key = 1;
 }
 
+message OpenExternalUrlRequest {
+  // https URL (or other scheme) to open in the system default handler.
+  string url = 1;
+}
+
 service AppService {
   rpc SetTheme(SetThemeRequest) returns (google.protobuf.Empty);
   rpc SetUnsavedIconState(SetUnsavedIconStateRequest) returns (google.protobuf.Empty);
@@ -77,4 +82,5 @@ service AppService {
   rpc GetOpenAIApiKeyStatus(GetOpenAIApiKeyStatusRequest) returns (GetOpenAIApiKeyStatusResponse);
   rpc GetStoredOpenAIApiKey(GetStoredOpenAIApiKeyRequest) returns (GetStoredOpenAIApiKeyResponse);
   rpc SetOpenAIApiKey(SetOpenAIApiKeyRequest) returns (SetOpenAIApiKeyResponse);
+  rpc OpenExternalUrl(OpenExternalUrlRequest) returns (google.protobuf.Empty);
 }

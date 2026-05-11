@@ -12,6 +12,7 @@ import {
   Check,
   FolderOpen,
   Settings2,
+  ExternalLink,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useIconPipeline } from "@/lib/icon-pipeline"
@@ -684,6 +685,12 @@ function SaveSuccessModal({
 
 // ── OpenAI API key: first-launch gate vs. manage (view or change stored key) ──
 
+const OPENAI_API_KEYS_HELP_URL = "https://platform.openai.com/api-keys"
+
+function openOpenAIApiKeysHelp() {
+  ipc.app.OpenExternalUrl({ url: OPENAI_API_KEYS_HELP_URL }).catch(() => {})
+}
+
 /** Returns null on success; otherwise an error string for the UI. */
 async function persistOpenAIApiKey(key: string): Promise<string | null> {
   const trimmed = key.trim()
@@ -698,14 +705,12 @@ async function persistOpenAIApiKey(key: string): Promise<string | null> {
 function ApiKeyModalShell({
   titleId,
   title,
-  description,
   headerTrailing,
   children,
   footer,
 }: {
   titleId: string
   title: string
-  description: ReactNode
   headerTrailing?: ReactNode
   children: ReactNode
   footer: ReactNode
@@ -718,21 +723,25 @@ function ApiKeyModalShell({
       aria-labelledby={titleId}
     >
       <div className="relative w-[420px] max-w-[calc(100vw-32px)] rounded-xl border border-border bg-background shadow-2xl">
-        <div className="px-4 pt-4 pb-3 border-b border-border">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0 flex-1">
-              <h2 id={titleId} className="text-sm font-medium text-foreground">
-                {title}
-              </h2>
-              <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">{description}</p>
-            </div>
-            {headerTrailing != null && (
-              <div className="shrink-0 flex items-center pt-0.5 -mr-1 -mt-0.5">{headerTrailing}</div>
-            )}
-          </div>
+        <div className="flex justify-between px-4 pt-4">
+            <h2 id={titleId} className="font-medium text-foreground place-content-center">{title}</h2>
+          {headerTrailing != null && (
+            <div className="shrink-0 flex items-center">{headerTrailing}</div>
+          )}
         </div>
         {children}
-        {footer}
+        <div className="flex items-center justify-between gap-3 px-4 pb-4">
+          <button
+            type="button"
+            onClick={openOpenAIApiKeysHelp}
+            className="flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground bg-secondary/60 hover:bg-secondary transition-colors shrink-0"
+            aria-label="Open OpenAI API keys in your browser"
+          >
+            <ExternalLink className="w-3.5 h-3.5 shrink-0" aria-hidden />
+            Open API Keys
+          </button>
+          {footer}
+        </div>
       </div>
     </div>
   )
@@ -772,26 +781,22 @@ function OpenAIApiKeyStartupModal({ onSaved }: { onSaved: () => void }) {
     <ApiKeyModalShell
       titleId="openai-api-key-startup-title"
       title="Add your OpenAI API key"
-      description={
-        <>
-          Icon generation uses OpenAI. Paste a key below; it is stored only in this app&apos;s
-          preferences on your computer.
-        </>
-      }
       footer={
-        <div className="flex justify-end px-4 pb-4">
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => void submit()}
-            className="h-8 px-4 rounded-lg text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
-          >
-            {busy ? "Saving…" : "Continue"}
-          </button>
-        </div>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => void submit()}
+          className="h-8 px-4 rounded-lg text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 shrink-0"
+        >
+          {busy ? "Saving…" : "Continue"}
+        </button>
       }
     >
       <div className="px-4 py-3 space-y-2">
+      <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
+      Icon generation uses OpenAI. Paste a key below; it is stored only in this app&apos;s
+      preferences on your computer.
+      </p>
         <Input
           type="text"
           autoComplete="off"
@@ -878,14 +883,13 @@ function OpenAIApiKeyManageModal({
     <ApiKeyModalShell
       titleId={reason === "authError" ? "openai-api-key-update-title" : "openai-api-key-manage-title"}
       title={title}
-      description={description}
       headerTrailing={
         <button
           type="button"
           disabled={busy}
           onClick={() => onClose(false)}
           className={cn(
-            "flex items-center justify-center h-8 w-8 rounded-lg",
+            "flex items-center justify-center h-8 w-8 rounded-md",
             "text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors",
             "disabled:opacity-50 disabled:pointer-events-none"
           )}
@@ -895,19 +899,18 @@ function OpenAIApiKeyManageModal({
         </button>
       }
       footer={
-        <div className="flex justify-end px-4 pb-4">
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => void submit()}
-            className="h-8 px-4 rounded-lg text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
-          >
-            {busy ? "Saving…" : "Save"}
-          </button>
-        </div>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => void submit()}
+          className="h-8 px-4 rounded-lg text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50 shrink-0"
+        >
+          {busy ? "Saving…" : "Save"}
+        </button>
       }
     >
-      <div className="px-4 py-3 space-y-2">
+      <div className="px-4 py-4 space-y-2">
+        <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">{description}</p>
         <Input
           type="text"
           autoComplete="off"

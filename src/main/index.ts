@@ -10,6 +10,7 @@ import {
   GetOpenAIApiKeyStatusResponse,
   GetStoredOpenAIApiKeyRequest,
   GetStoredOpenAIApiKeyResponse,
+  OpenExternalUrlRequest,
   SaveIconRequest,
   SaveIconResponse,
   SetOpenAIApiKeyRequest,
@@ -226,6 +227,14 @@ ipc.registerService(AppService({
   async ShowPathInFinder(request: ShowPathInFinderRequest) {
     if (request.path) {
       desktop.showPath(request.path);
+    }
+    return {};
+  },
+
+  async OpenExternalUrl(request: OpenExternalUrlRequest) {
+    const url = request.url.trim();
+    if (url) {
+      desktop.openUrl(url);
     }
     return {};
   },
