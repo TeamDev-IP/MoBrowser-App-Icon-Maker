@@ -133,7 +133,10 @@ async function showAboutDialog() {
 // Set the theme to dark by default.
 app.setTheme('dark');
 
-// Setup the main app menu.
+// ---------------------------------------------------------------------------
+// Main App Menu
+// ---------------------------------------------------------------------------
+
 const macAppMenu = new MenuWithRole({
   role: 'macAppMenu',
   items: [
