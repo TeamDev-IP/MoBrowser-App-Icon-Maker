@@ -4,10 +4,7 @@ A simple desktop app for generating **macOS app icons** in the `*.icns` format w
 
 Here's a short video demonstrating the app in action:
 
-<video width="840" height="550" controls>
-  <source src="app-icon-maker-demo.mp4" type="video/mp4">
-  Your browser does not support the video tag.
-</video>
+https://github.com/user-attachments/assets/1c87f99d-993f-408b-bd32-a1eb6552eada
 
 ## What it does
 
