@@ -65,7 +65,7 @@ export function PromptInput({
   return (
     <div
       className={cn(
-        "w-full rounded-lg border border-border bg-secondary/40 transition-all duration-200",
+        "w-full rounded-4xl border border-border bg-secondary/40 transition-all duration-200",
         "focus-within:border-border/80 focus-within:bg-secondary/60 p-3"
       )}
     >
@@ -81,14 +81,14 @@ export function PromptInput({
         className={cn(
           "w-full bg-transparent resize-none border-0 outline-none ring-0",
           "text-sm text-foreground placeholder:text-muted-foreground",
-          "leading-relaxed overflow-y-auto",
+          "leading-relaxed overflow-y-auto m-1.5",
           inputDisabled && "opacity-60"
         )}
         style={{ scrollbarWidth: "thin", scrollbarColor: "rgba(255,255,255,0.15) transparent" }}
       />
 
       {/* Bottom action bar. */}
-      <div className="flex items-center justify-between pt-1">
+      <div className="flex items-center justify-between">
         <div
           className={cn(
             "flex items-center gap-0.5",
@@ -107,7 +107,7 @@ export function PromptInput({
           <button
             onClick={() => fileInputRef.current?.click()}
             className={cn(
-              "flex items-center justify-center w-8 h-8 rounded-lg",
+              "flex items-center justify-center w-8 h-8 rounded-full",
               "text-muted-foreground hover:text-foreground hover:bg-white/10",
               "transition-colors shrink-0"
             )}
@@ -120,7 +120,7 @@ export function PromptInput({
             type="button"
             onClick={onOpenApiKeySettings}
             className={cn(
-              "flex items-center justify-center w-8 h-8 rounded-lg",
+              "flex items-center justify-center w-8 h-8 rounded-full",
               "text-muted-foreground hover:text-foreground hover:bg-white/10",
               "transition-colors shrink-0"
             )}
@@ -154,7 +154,7 @@ export function PromptInput({
               onClick={onRegenerate}
               disabled={!regenerateEnabled}
               className={cn(
-                "flex items-center justify-center rounded-lg transition-all duration-200 shrink-0 w-8 min-w-8 h-8 px-0",
+                "flex items-center justify-center rounded-full transition-all duration-200 shrink-0 w-8 min-w-8 h-8 px-0",
                 regenerateEnabled
                   ? "bg-secondary/70 text-foreground hover:bg-secondary shadow-sm"
                   : "bg-muted text-muted-foreground cursor-not-allowed"
@@ -170,7 +170,7 @@ export function PromptInput({
             onClick={onPrimary}
             disabled={!primaryEnabled}
             className={cn(
-              "flex items-center justify-center gap-0.5 rounded-lg transition-all duration-200 shrink-0 h-8 font-medium text-xs",
+              "flex items-center justify-center gap-0.5 rounded-full transition-all duration-200 shrink-0 h-8 font-medium text-xs",
               primaryAction === "select" ? "min-w-[88px] px-3" : "w-8 min-w-8 px-0",
               primaryEnabled
                 ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
