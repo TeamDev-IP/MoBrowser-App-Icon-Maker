@@ -2,6 +2,8 @@
 
 A simple desktop app for generating **macOS app icons** in the `*.icns` format with AI. You describe what you want, optionally attach a reference image, pick from several variants, refine the chosen design, then save a proper `*.icns` bundle and the `*.iconset` folder with all standard sizes.
 
+This app uses the [OpenAI API](https://openai.com/api/) for image generation.
+
 Here's a short video demonstrating the app in action:
 
 https://github.com/user-attachments/assets/1c87f99d-993f-408b-bd32-a1eb6552eada
@@ -19,9 +21,8 @@ Quitting with an unsaved icon triggers a confirmation dialog.
 
 ## Requirements
 
-- **Node.js** matching `engines` in `package.json` (see there for supported major versions).
-- **macOS** for development and for saving **`.icns`**: the main process uses **`sips`** and **`iconutil`**, which are part of macOS.
-- An OpenAI API key for image generation.
+- macOS 14 (Apple Silicon) or later.
+- Node.js 24.14.1 (LTS) or later.
 
 ## Setup
 
