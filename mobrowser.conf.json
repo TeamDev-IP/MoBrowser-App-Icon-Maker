@@ -7,8 +7,8 @@
       "patch": "0"
     },
     "author": "",
-    "copyright": "",
-    "description": "",
+    "copyright": "© 2026 TeamDev. All rights reserved.",
+    "description": "Denerate beautiful macOS app icons in the *.icns format using AI.",
     "locales": ["en-US"],
     "trustedOrigins": [],
     "bundle": {

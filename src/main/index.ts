@@ -1,4 +1,4 @@
-import { app, BrowserWindow, desktop, ipc, prefs, Theme } from '@mobrowser/api';
+import { app, BrowserWindow, desktop, ipc, Menu, MenuItem, MenuWithRole, prefs, Theme } from '@mobrowser/api';
 import { exec } from 'node:child_process';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
@@ -112,16 +112,117 @@ async function buildIcnsAt(imageData: Buffer, iconsetDir: string, icnsPath: stri
   }
 }
 
+async function showAboutDialog() {
+  const result = await app.showMessageDialog({
+    parentWindow: win,
+    type: 'info',
+    message: `${app.name} ${app.version}`,
+    informativeText: `${app.description}\n\nPowered by MōBrowser framework.\n\n${app.copyright}`,
+    buttons: [
+      { label: 'Close', type: 'primary' },
+      { label: 'Open GitHub Repository...', type: 'secondary' },
+    ],
+  });
+  if (result.button.type === 'secondary') {
+    desktop.openUrl('https://github.com/TeamDev-IP/MoBrowser-App-Icon-Maker');
+  }
+}
+
 // Set the theme to dark by default.
 app.setTheme('dark');
+
+// Setup the main app menu.
+const macAppMenu = new MenuWithRole({
+  role: 'macAppMenu',
+  items: [
+    new MenuItem({
+      id: 'about',
+      label: 'About ' + app.name,
+      action: (_item: MenuItem) => {
+        showAboutDialog();
+      }
+    }),
+    'separator',
+    'macHideApp',
+    'macHideOthers',
+    'macShowAll',
+    'separator',
+    'quit',
+  ]
+})
+
+const fileMenu = new MenuWithRole({
+  role: 'fileMenu',
+  items: [
+    'closeWindow',
+  ]
+})
+
+const editMenu = new MenuWithRole({
+  role: 'editMenu',
+  items: [
+    'undo',
+    'redo',
+    'separator',
+    'cut',
+    'copy',
+    'paste',
+    'pasteAndMatchStyle',
+    'delete',
+    'selectAll',
+  ]
+})
+
+const viewMenu = new Menu({
+  label: 'View',
+  items: [
+    'zoomReset',
+    'zoomIn',
+    'zoomOut',
+    'separator',
+    'fullScreen',
+  ]
+})
+
+const windowMenu = new MenuWithRole({
+  role: 'windowMenu',
+  items: [
+    'minimizeWindow',
+  ]
+})
+
+const helpMenu = new MenuWithRole({
+  role: 'helpMenu',
+  items: [
+    new MenuItem({
+      id: 'openGitHub',
+      label: 'Open GitHub Repository...',
+      action: (_item: MenuItem) => {
+        desktop.openUrl('https://github.com/TeamDev-IP/MoBrowser-App-Icon-Maker')
+      }
+    }),
+  ]
+})
+
+const appMenu = new Menu({
+  items: [
+    macAppMenu,
+    fileMenu,
+    editMenu,
+    viewMenu,
+    windowMenu,
+    helpMenu,
+  ]
+})
+app.setMenu(appMenu)
 
 // ---------------------------------------------------------------------------
 // Window
 // ---------------------------------------------------------------------------
 
-/** Updated from the renderer when icon data exists that is not yet saved to disk. */
 let hasUnsavedIcon = false;
 
+// Create the main app window.
 const win = new BrowserWindow({
   url: app.url,
   size: { width: 550, height: 520 },
