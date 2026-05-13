@@ -47,6 +47,8 @@ const ICON_SIZES: [string, number][] = [
   ['icon_512x512@2x.png', 1024],
 ];
 
+const GITHUB_REPOSITORY_URL = 'https://github.com/TeamDev-IP/MoBrowser-App-Icon-Maker';
+
 function run(cmd: string): Promise<void> {
   return new Promise((resolve, reject) => {
     exec(cmd, (err) => (err ? reject(err) : resolve()));
@@ -124,7 +126,7 @@ async function showAboutDialog() {
     ],
   });
   if (result.button.type === 'secondary') {
-    desktop.openUrl('https://github.com/TeamDev-IP/MoBrowser-App-Icon-Maker');
+    desktop.openUrl(GITHUB_REPOSITORY_URL);
   }
 }
 
@@ -198,7 +200,7 @@ const helpMenu = new MenuWithRole({
       id: 'openGitHub',
       label: 'Open GitHub Repository...',
       action: (_item: MenuItem) => {
-        desktop.openUrl('https://github.com/TeamDev-IP/MoBrowser-App-Icon-Maker')
+        desktop.openUrl(GITHUB_REPOSITORY_URL);
       }
     }),
   ]
