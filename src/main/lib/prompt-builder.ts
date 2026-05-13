@@ -5,22 +5,31 @@
  * stricter rules) keeps output consistent across generations.
  */
 const SYSTEM_PREFIX =
-  "Premium macOS app icon, centered composition, single object, no text, " +
-  "no background clutter, soft shadow, subtle gradient, consistent stroke width, " +
-  "full-bleed square composition, artwork extends to the edges with no inset shape, " +
-  "Apple Human Interface Guidelines style, minimalistic, " +
-  "clean, high contrast, 3D depth with soft lighting, glass/liquid material, " +
-  "professional UI icon, SF Symbols inspired";
+  "Premium macOS app icon artwork, centered composition, single object only, " +
+  "no text, no letters, no UI mockup, " +
+  "clean cohesive background, " +
+  "object fills the square canvas naturally, " +
+  "NO rounded rectangle container, NO squircle, NO icon plate, " +
+  "NO app icon frame, NO border, NO bezel, NO tile background, " +
+  "background is part of the artwork itself, not a separate shape or container, " +
+  "balanced full-canvas composition, " +
+  "minimalistic, clean, high contrast, " +
+  "3D depth with soft studio lighting, " +
+  "premium material rendering, subtle gradients, " +
+  "SF Symbols inspired simplicity, " +
+  "macOS native aesthetic";
 
 /**
  * Concepts to steer the model away from.  The active image provider may or may
  * not use this string; OpenAI image models rely mainly on the positive prompt.
  */
 export const NEGATIVE_PROMPT =
-  "text, letters, words, watermark, multiple objects, cluttered, low quality, " +
-  "blurry, distorted, noisy, photorealistic photo, flat without depth, " +
-  "dark background, busy pattern, outer border frame, inset rounded rectangle plate, " +
-  "inner squircle bezel, UI chrome frame, drop shadow on white";
+  "rounded rectangle, squircle, icon container, app icon frame, " +
+  "border, bezel, tile, plate, inset shape, background card, " +
+  "floating tile, glossy badge, app store icon style, " +
+  "UI frame, rounded corners, framed object, " +
+  "text, letters, watermark, multiple objects, clutter, " +
+  "blurry, noisy, distorted, photorealistic photo";
 
 export interface BuiltPrompt {
   positive: string;
