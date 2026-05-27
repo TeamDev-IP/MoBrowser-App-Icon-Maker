@@ -1,4 +1,4 @@
-# App Icon Maker
+# MōIcons — create app icons for macOS
 
 A simple desktop app for generating **macOS app icons** in the `*.icns` format with AI. You describe what you want, optionally attach a reference image, pick from several variants, refine the chosen design, then save a proper `*.icns` bundle and the `*.iconset` folder with all standard sizes.
 
