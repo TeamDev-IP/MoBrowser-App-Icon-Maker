@@ -47,7 +47,7 @@ const ICON_SIZES: [string, number][] = [
   ['icon_512x512@2x.png', 1024],
 ];
 
-const GITHUB_REPOSITORY_URL = 'https://github.com/TeamDev-IP/MoBrowser-App-Icon-Maker';
+const GITHUB_REPOSITORY_URL = 'https://github.com/mo-browser-apps/icons';
 
 function run(cmd: string): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -98,7 +98,7 @@ async function removeIcnsOutputs(icnsPath: string, iconsetDir: string): Promise<
 }
 
 async function buildIcnsAt(imageData: Buffer, iconsetDir: string, icnsPath: string): Promise<void> {
-  const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'iconmaker-'));
+  const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'moicons-'));
   const srcPng = path.join(tmp, 'icon_1024.png');
   await fs.writeFile(srcPng, Buffer.from(imageData));
   try {
