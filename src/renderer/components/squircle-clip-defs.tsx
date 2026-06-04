@@ -4,7 +4,7 @@ export function SquircleClipDefs() {
   return (
     <svg width="0" height="0" className="absolute overflow-hidden" aria-hidden>
       <defs>
-        <clipPath id="iconmaker-squircle-clip" clipPathUnits="objectBoundingBox">
+        <clipPath id="moicons-squircle-clip" clipPathUnits="objectBoundingBox">
           <path d={SQUICLE_PATH_01} />
         </clipPath>
       </defs>

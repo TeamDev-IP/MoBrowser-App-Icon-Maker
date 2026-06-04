@@ -44,7 +44,7 @@ export const BLUEPRINT_SQUICLE_D = pointsToPathD(_BP)
 
 export const ICON_CLIP_FILTER_BASE = "drop-shadow(0 12px 24px rgba(0,0,0,0.5))"
 
-export const appIconShapeClip: CSSProperties = { clipPath: "url(#iconmaker-squircle-clip)" }
+export const appIconShapeClip: CSSProperties = { clipPath: "url(#moicons-squircle-clip)" }
 
 export const ICON_FACE_EDGE_DEFAULT = "rgba(255,255,255,0.08)"
 /** Dark gray rim for the idle / generating three-icon stack. */

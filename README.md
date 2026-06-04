@@ -70,4 +70,4 @@ npm run build
 
 ## Download
 
-You can download the app from the [releases page](https://github.com/TeamDev-IP/MoBrowser-App-Icon-Maker/releases). All releases are signed and notarized by Apple.
+You can download the app from the [releases page](https://github.com/mo-browser-apps/icons/releases). All releases are signed and notarized by Apple.
