@@ -5,11 +5,21 @@ import { ipc } from "@/gen/ipc"
 import { Input } from "@/components/ui/input"
 
 const OPENAI_API_KEYS_HELP_URL = "https://platform.openai.com/api-keys"
+const OPENROUTER_API_KEYS_HELP_URL = "https://openrouter.ai/keys"
 
 export type OpenAIApiKeyManageReason = "settings" | "authError"
 
-function openOpenAIApiKeysHelp() {
-  ipc.app.OpenExternalUrl({ url: OPENAI_API_KEYS_HELP_URL }).catch(() => {})
+/** OpenRouter keys are always `sk-or-…`; anything else is treated as OpenAI. */
+function isOpenRouterKey(value: string): boolean {
+  return value.trim().startsWith("sk-or-")
+}
+
+/** Open the key console matching the key the user is entering. */
+function openApiKeysHelp(value: string) {
+  const url = isOpenRouterKey(value)
+    ? OPENROUTER_API_KEYS_HELP_URL
+    : OPENAI_API_KEYS_HELP_URL
+  ipc.app.OpenExternalUrl({ url }).catch(() => {})
 }
 
 /** Returns null on success; otherwise an error string for the UI. */
@@ -29,12 +39,15 @@ function ApiKeyModalShell({
   headerTrailing,
   children,
   footer,
+  apiKeyValue = "",
 }: {
   titleId: string
   title: string
   headerTrailing?: ReactNode
   children: ReactNode
   footer: ReactNode
+  /** Current key text — decides which key console the help button opens. */
+  apiKeyValue?: string
 }) {
   return (
     <div
@@ -54,9 +67,13 @@ function ApiKeyModalShell({
         <div className="flex items-center justify-between gap-3 px-4 pb-4">
           <button
             type="button"
-            onClick={openOpenAIApiKeysHelp}
+            onClick={() => openApiKeysHelp(apiKeyValue)}
             className="flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground bg-secondary/60 hover:bg-secondary transition-colors shrink-0"
-            aria-label="Open OpenAI API keys in your browser"
+            aria-label={
+              isOpenRouterKey(apiKeyValue)
+                ? "Open OpenRouter API keys in your browser"
+                : "Open OpenAI API keys in your browser"
+            }
           >
             <ExternalLink className="w-3.5 h-3.5 shrink-0" aria-hidden />
             Open API Keys
@@ -101,7 +118,8 @@ export function OpenAIApiKeyStartupModal({ onSaved }: { onSaved: () => void }) {
   return (
     <ApiKeyModalShell
       titleId="openai-api-key-startup-title"
-      title="Add your OpenAI API key"
+      title="Add your API key"
+      apiKeyValue={value}
       footer={
         <button
           type="button"
@@ -115,14 +133,16 @@ export function OpenAIApiKeyStartupModal({ onSaved }: { onSaved: () => void }) {
     >
       <div className="px-4 py-3 space-y-2">
       <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
-      Icon generation uses OpenAI. Paste a key below; it is stored only in this app&apos;s
-      preferences on your computer.
+      Icon generation uses OpenAI or OpenRouter. Paste an OpenAI key
+      (<span className="font-mono">sk-…</span>) or an OpenRouter key
+      (<span className="font-mono">sk-or-…</span>); it is stored only in this
+      app&apos;s preferences on your computer.
       </p>
         <Input
           type="text"
           autoComplete="off"
           spellCheck={false}
-          placeholder="sk-…"
+          placeholder="sk-… or sk-or-…"
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={onKeyDown}
@@ -184,17 +204,20 @@ export function OpenAIApiKeyManageModal({
     }
   }
 
-  const title =
-    reason === "authError" ? "Update OpenAI API key" : "OpenAI API key"
+  const title = reason === "authError" ? "Update API key" : "API key"
   const description =
     reason === "authError" ? (
       <>
-        OpenAI rejected the last request (often an invalid, expired, or mistyped key). Enter a valid
-        key below; it replaces the one saved in this app&apos;s preferences.
+        The provider rejected the last request (often an invalid, expired, or mistyped key). Enter a
+        valid OpenAI (<span className="font-mono">sk-…</span>) or OpenRouter
+        (<span className="font-mono">sk-or-…</span>) key; it replaces the one saved in this
+        app&apos;s preferences.
       </>
     ) : (
       <>
-        Here's your API key. Edit it and save to update it.
+        Here's your API key. Edit it and save to update it. OpenAI
+        (<span className="font-mono">sk-…</span>) and OpenRouter
+        (<span className="font-mono">sk-or-…</span>) keys are both supported.
       </>
     )
 
@@ -202,6 +225,7 @@ export function OpenAIApiKeyManageModal({
     <ApiKeyModalShell
       titleId={reason === "authError" ? "openai-api-key-update-title" : "openai-api-key-manage-title"}
       title={title}
+      apiKeyValue={value}
       headerTrailing={
         <button
           type="button"
@@ -234,7 +258,7 @@ export function OpenAIApiKeyManageModal({
           type="text"
           autoComplete="off"
           spellCheck={false}
-          placeholder="sk-…"
+          placeholder="sk-… or sk-or-…"
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={onKeyDown}

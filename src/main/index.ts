@@ -19,14 +19,13 @@ import {
   SetUnsavedIconStateRequest,
   ShowPathInFinderRequest,
 } from './gen/app';
-import { AppService } from './gen/ipc_service';
+import { AppServiceDescriptor } from './gen/ipc_service';
 import { buildPrompt } from './lib/prompt-builder';
-import type { ProviderName } from './lib/image-provider';
-import { getProvider } from './lib/image-provider';
+import { getProvider, resolveProviderName } from './lib/image-provider';
 import {
-  getResolvedOpenAIApiKey,
-  hasOpenAIApiKeyInPrefs,
-  OPENAI_API_KEY_PREFS_KEY,
+  getResolvedApiKey,
+  hasApiKeyInPrefs,
+  API_KEY_PREFS_KEY,
 } from './lib/openai-api-key';
 
 // ---------------------------------------------------------------------------
@@ -268,7 +267,7 @@ win.handle('close', async () => {
 // IPC service
 // ---------------------------------------------------------------------------
 
-ipc.registerService(AppService({
+ipc.registerService(AppServiceDescriptor, {
   async SetTheme(request: SetThemeRequest) {
     app.setTheme(request.theme as Theme);
     return {};
@@ -367,18 +366,18 @@ ipc.registerService(AppService({
   async GetOpenAIApiKeyStatus(
     _request: GetOpenAIApiKeyStatusRequest
   ): Promise<GetOpenAIApiKeyStatusResponse> {
-    const name =
-      (process.env.ICON_PROVIDER as ProviderName | undefined) ?? 'openai';
+    // A key is required for any real image provider (OpenAI or OpenRouter);
+    // only the mock provider needs none.
     return {
-      openaiKeyRequired: name === 'openai',
-      hasOpenaiKey: hasOpenAIApiKeyInPrefs(),
+      openaiKeyRequired: resolveProviderName() !== 'mock',
+      hasOpenaiKey: hasApiKeyInPrefs(),
     };
   },
 
   async GetStoredOpenAIApiKey(
     _request: GetStoredOpenAIApiKeyRequest
   ): Promise<GetStoredOpenAIApiKeyResponse> {
-    return { apiKey: getResolvedOpenAIApiKey() };
+    return { apiKey: getResolvedApiKey() };
   },
 
   async SetOpenAIApiKey(
@@ -388,10 +387,10 @@ ipc.registerService(AppService({
     if (!key) {
       return { error: 'API key cannot be empty.' };
     }
-    prefs.setString(OPENAI_API_KEY_PREFS_KEY, key);
+    prefs.setString(API_KEY_PREFS_KEY, key);
     if (!prefs.persist()) {
       return { error: 'Could not save preferences to disk.' };
     }
     return { error: '' };
   },
-}));
+});

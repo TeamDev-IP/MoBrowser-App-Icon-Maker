@@ -1,5 +1,7 @@
 import { OpenAIProvider } from "./providers/openai";
+import { OpenRouterProvider } from "./providers/openrouter";
 import { MockImageProvider } from "./providers/mock";
+import { getResolvedApiKey, detectProviderFromKey } from "./openai-api-key";
 
 // ---------------------------------------------------------------------------
 // Public interface
@@ -31,39 +33,56 @@ export interface ImageProvider {
 // Supported providers
 // ---------------------------------------------------------------------------
 
-export type ProviderName = "openai" | "mock";
+export type ProviderName = "openai" | "openrouter" | "mock";
 
 // ---------------------------------------------------------------------------
-// Lazy singleton — one provider instance per process lifetime
+// Provider resolution — one cached instance per provider name
 // ---------------------------------------------------------------------------
 
-let _activeProvider: ImageProvider | null = null;
+const _instances: Partial<Record<ProviderName, ImageProvider>> = {};
 
 /**
- * Return the active provider, instantiating it on first call.
+ * Resolve the active provider name.
  *
- * The provider is selected by the `ICON_PROVIDER` environment variable
- * (`"openai"` or `"mock"`).  Defaults to `"openai"`.
+ * An explicit `ICON_PROVIDER` environment variable always wins (handy for
+ * `mock` during development, or to pin a provider). Otherwise the provider is
+ * inferred from the stored API key: an `sk-or-…` key selects OpenRouter, and
+ * anything else selects OpenAI. Re-evaluated on every call so swapping the key
+ * at runtime takes effect immediately.
+ */
+export function resolveProviderName(): ProviderName {
+  const forced = process.env.ICON_PROVIDER?.trim() as ProviderName | undefined;
+  if (forced === "mock" || forced === "openai" || forced === "openrouter") {
+    return forced;
+  }
+  return detectProviderFromKey(getResolvedApiKey());
+}
+
+/**
+ * Return the active provider, instantiating it on first use per name.
  *
  * Required configuration:
- *   - openai:  API key in app preferences (startup prompt saves it there)
- *   - mock:    none (placeholder images only, for local testing)
+ *   - openai:     `sk-…` key in app preferences
+ *   - openrouter: `sk-or-…` key in app preferences (model via OPENROUTER_MODEL)
+ *   - mock:       none (placeholder images only, for local testing)
  */
 export function getProvider(): ImageProvider {
-  if (_activeProvider) return _activeProvider;
-
-  const name =
-    (process.env.ICON_PROVIDER as ProviderName | undefined) ?? "openai";
+  const name = resolveProviderName();
+  const existing = _instances[name];
+  if (existing) return existing;
 
   let created: ImageProvider;
   switch (name) {
     case "mock":
       created = new MockImageProvider();
       break;
+    case "openrouter":
+      created = new OpenRouterProvider();
+      break;
     default:
       created = new OpenAIProvider();
   }
-  _activeProvider = created;
+  _instances[name] = created;
   return created;
 }
 
