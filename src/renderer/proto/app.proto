@@ -73,6 +73,19 @@ message OpenExternalUrlRequest {
   string url = 1;
 }
 
+message PickReferenceImageRequest {}
+
+message PickReferenceImageResponse {
+  // Base64-encoded image bytes, no data URL prefix. Empty when canceled/failed.
+  string image_b64 = 1;
+  // MIME type of the selected image, e.g. "image/png".
+  string mime = 2;
+  // True when the user dismissed the dialog without choosing a file.
+  bool canceled = 3;
+  // Empty on success; otherwise a short error message for the user.
+  string error = 4;
+}
+
 service AppService {
   rpc SetTheme(SetThemeRequest) returns (google.protobuf.Empty);
   rpc SetUnsavedIconState(SetUnsavedIconStateRequest) returns (google.protobuf.Empty);
@@ -83,4 +96,5 @@ service AppService {
   rpc GetStoredOpenAIApiKey(GetStoredOpenAIApiKeyRequest) returns (GetStoredOpenAIApiKeyResponse);
   rpc SetOpenAIApiKey(SetOpenAIApiKeyRequest) returns (SetOpenAIApiKeyResponse);
   rpc OpenExternalUrl(OpenExternalUrlRequest) returns (google.protobuf.Empty);
+  rpc PickReferenceImage(PickReferenceImageRequest) returns (PickReferenceImageResponse);
 }

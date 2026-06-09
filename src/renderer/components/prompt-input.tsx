@@ -1,4 +1,4 @@
-import { useRef, type ChangeEvent, type KeyboardEvent } from "react"
+import { useEffect, useRef, type KeyboardEvent } from "react"
 import {
   ArrowUp,
   ChevronRight,
@@ -8,8 +8,19 @@ import {
   X,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { ipc } from "@/gen/ipc"
 
 export type PrimaryAction = "submit" | "stop" | "refresh" | "select"
+
+/** Read a File/Blob into a `data:` URL. */
+function readAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onloadend = () => resolve(reader.result as string)
+    reader.onerror = () => reject(reader.error)
+    reader.readAsDataURL(file)
+  })
+}
 
 export function PromptInput({
   value,
@@ -39,7 +50,6 @@ export function PromptInput({
   onOpenApiKeySettings: () => void
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -49,18 +59,47 @@ export function PromptInput({
     }
   }
 
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files ?? [])
-    const newUrls = files.map((file) => URL.createObjectURL(file))
-    onAttachmentsChange([...attachments, ...newUrls])
-    e.target.value = ""
+  // Open the native file picker in the main process (reliable in MoBrowser),
+  // then store the chosen image as a data URL.
+  const handleAttachClick = async () => {
+    try {
+      const res = await ipc.app.PickReferenceImage({})
+      if (res.canceled || !res.imageB64) return
+      const dataUrl = `data:${res.mime || "image/png"};base64,${res.imageB64}`
+      onAttachmentsChange([...attachments, dataUrl])
+    } catch {
+      // Ignore; the user can retry.
+    }
   }
 
   const removeAttachment = (index: number) => {
-    const removed = attachments[index]
-    URL.revokeObjectURL(removed)
     onAttachmentsChange(attachments.filter((_, i) => i !== index))
   }
+
+  // Paste an image (⌘V) anywhere in the app to attach it as a reference.
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      if (inputDisabled) return
+      const items = e.clipboardData?.items
+      if (!items) return
+      const files: File[] = []
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i]
+        if (item.kind === "file" && item.type.startsWith("image/")) {
+          const file = item.getAsFile()
+          if (file) files.push(file)
+        }
+      }
+      if (files.length === 0) return
+      // Image present: don't let the raw bytes land in the textarea.
+      e.preventDefault()
+      Promise.all(files.map(readAsDataUrl))
+        .then((urls) => onAttachmentsChange([...attachments, ...urls]))
+        .catch(() => {})
+    }
+    document.addEventListener("paste", onPaste)
+    return () => document.removeEventListener("paste", onPaste)
+  }, [attachments, onAttachmentsChange, inputDisabled])
 
   return (
     <div
@@ -95,23 +134,17 @@ export function PromptInput({
             inputDisabled && "pointer-events-none opacity-60"
           )}
         >
-          {/* Attach reference image. */}
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            multiple
-            className="hidden"
-            onChange={handleFileChange}
-          />
+          {/* Attach reference image — opens the native file dialog via IPC. */}
           <button
-            onClick={() => fileInputRef.current?.click()}
+            type="button"
+            onClick={handleAttachClick}
             className={cn(
               "flex items-center justify-center w-8 h-8 rounded-full",
               "text-muted-foreground hover:text-foreground hover:bg-white/10",
               "transition-colors shrink-0"
             )}
             title="Attach reference image"
+            aria-label="Attach reference image"
           >
             <ImagePlus className="w-4 h-4" />
           </button>

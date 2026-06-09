@@ -11,6 +11,8 @@ import {
   GetStoredOpenAIApiKeyRequest,
   GetStoredOpenAIApiKeyResponse,
   OpenExternalUrlRequest,
+  PickReferenceImageRequest,
+  PickReferenceImageResponse,
   SaveIconRequest,
   SaveIconResponse,
   SetOpenAIApiKeyRequest,
@@ -345,6 +347,50 @@ ipc.registerService(AppServiceDescriptor, {
       desktop.openUrl(url);
     }
     return {};
+  },
+
+  async PickReferenceImage(
+    _request: PickReferenceImageRequest
+  ): Promise<PickReferenceImageResponse> {
+    // Use the native open dialog rather than an HTML <input type=file>: in
+    // MoBrowser the native picker is the reliable way to choose a file from the
+    // sandboxed renderer.
+    const pick = await app.showOpenDialog({
+      parentWindow: win,
+      title: 'Choose reference image',
+      buttonLabelOpen: 'Attach',
+      selectionPolicy: 'files',
+      filters: [
+        { name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] },
+      ],
+    });
+
+    if (pick.canceled || pick.paths.length === 0) {
+      return { imageB64: '', mime: '', canceled: true, error: '' };
+    }
+
+    try {
+      const picked = pick.paths[0];
+      const bytes = await fs.readFile(picked);
+      const ext = path.extname(picked).toLowerCase();
+      const mime =
+        ext === '.jpg' || ext === '.jpeg'
+          ? 'image/jpeg'
+          : ext === '.webp'
+            ? 'image/webp'
+            : ext === '.gif'
+              ? 'image/gif'
+              : 'image/png';
+      return {
+        imageB64: bytes.toString('base64'),
+        mime,
+        canceled: false,
+        error: '',
+      };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return { imageB64: '', mime: '', canceled: false, error: message };
+    }
   },
 
   async GenerateIcon(request: GenerateIconRequest): Promise<GenerateIconResponse> {
