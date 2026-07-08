@@ -53,6 +53,9 @@ To build the app for production:
 npm run build
 ```
 
+Production Sentry telemetry is included only when `SENTRY_DSN` is set during the build.
+Release builds read it from the `SENTRY_DSN` GitHub Actions secret.
+
 ## How to use the app
 
 1. **Describe the icon** in the prompt field (short phrases work well: e.g. “blue clipboard with folded corner”).

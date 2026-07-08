@@ -17,6 +17,8 @@
     "@hugeicons/react": "^1.1.6",
     "@mobrowser/api": "2.9.0",
     "@mobrowser/cli": "2.9.0",
+    "@sentry/node": "^10.64.0",
+    "@sentry/react": "^10.64.0",
     "@radix-ui/react-dropdown-menu": "^2.0.6",
     "@radix-ui/react-slot": "^1.0.2",
     "@radix-ui/react-toggle": "^1.1.10",

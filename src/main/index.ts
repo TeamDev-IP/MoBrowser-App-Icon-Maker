@@ -1,3 +1,4 @@
+import './sentry';
 import { app, BrowserWindow, desktop, ipc, Menu, MenuItem, MenuWithRole, prefs, Theme } from '@mobrowser/api';
 import { exec } from 'node:child_process';
 import * as fs from 'node:fs/promises';
@@ -19,7 +20,7 @@ import {
   SetUnsavedIconStateRequest,
   ShowPathInFinderRequest,
 } from './gen/app';
-import { AppService } from './gen/ipc_service';
+import { AppServiceDescriptor } from './gen/ipc_service';
 import { buildPrompt } from './lib/prompt-builder';
 import type { ProviderName } from './lib/image-provider';
 import { getProvider } from './lib/image-provider';
@@ -268,7 +269,14 @@ win.handle('close', async () => {
 // IPC service
 // ---------------------------------------------------------------------------
 
-ipc.registerService(AppService({
+ipc.registerService(AppServiceDescriptor, {
+  async GetApplicationMetadata() {
+    return {
+      name: app.name,
+      version: app.version,
+    };
+  },
+
   async SetTheme(request: SetThemeRequest) {
     app.setTheme(request.theme as Theme);
     return {};
@@ -394,4 +402,4 @@ ipc.registerService(AppService({
     }
     return { error: '' };
   },
-}));
+});

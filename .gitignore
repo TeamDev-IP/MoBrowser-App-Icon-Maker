@@ -1,6 +1,11 @@
 # Node dependencies.
 node_modules/
 
+# Local environment.
+.env
+.env.*
+!.env.example
+
 # Build output.
 build/
 dist/
