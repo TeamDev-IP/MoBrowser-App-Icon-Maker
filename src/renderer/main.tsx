@@ -5,7 +5,9 @@ import * as Sentry from "@sentry/react";
 import App from "./App.tsx";
 import { initializeSentry } from "./sentry";
 
-await initializeSentry();
+void initializeSentry().catch((error: unknown) => {
+    console.warn("Sentry init failed", error);
+});
 
 ReactDOM.createRoot(document.getElementById("root")!, {
     onCaughtError: Sentry.reactErrorHandler(),
