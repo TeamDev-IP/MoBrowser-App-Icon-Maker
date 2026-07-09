@@ -15,8 +15,10 @@ export default defineConfig(({ command, mode }) => {
 })
 
 function createBuildTimeDefines(sentryEnabled: boolean): Record<string, string> {
+  const sentryDsn = sentryEnabled ? (process.env.SENTRY_DSN ?? "") : "";
+
   return {
-    SENTRY_DSN: JSON.stringify(process.env.SENTRY_DSN ?? ""),
+    SENTRY_DSN: JSON.stringify(sentryDsn),
     SENTRY_ENABLED: JSON.stringify(sentryEnabled),
   }
 }
