@@ -41,6 +41,7 @@ function defineMainConfig(buildTimeDefines: Record<string, string>): UserConfig 
           "import-in-the-middle",
           "module-details-from-path",
           "require-in-the-middle",
+          // Externalize all Node.js built-in modules
           /^node:.*/,
         ],
       },
