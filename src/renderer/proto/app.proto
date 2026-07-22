@@ -2,6 +2,11 @@ syntax = "proto3";
 
 import "google/protobuf/empty.proto";
 
+message ApplicationMetadata {
+  string name = 1;
+  string version = 2;
+}
+
 message SetThemeRequest {
   string theme = 1;
 }
@@ -87,6 +92,7 @@ message PickReferenceImageResponse {
 }
 
 service AppService {
+  rpc GetApplicationMetadata(google.protobuf.Empty) returns (ApplicationMetadata);
   rpc SetTheme(SetThemeRequest) returns (google.protobuf.Empty);
   rpc SetUnsavedIconState(SetUnsavedIconStateRequest) returns (google.protobuf.Empty);
   rpc SaveIcon(SaveIconRequest) returns (SaveIconResponse);

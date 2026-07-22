@@ -1,3 +1,4 @@
+import './sentry';
 import { app, BrowserWindow, desktop, ipc, Menu, MenuItem, MenuWithRole, prefs, Theme } from '@mobrowser/api';
 import { exec } from 'node:child_process';
 import * as fs from 'node:fs/promises';
@@ -270,6 +271,13 @@ win.handle('close', async () => {
 // ---------------------------------------------------------------------------
 
 ipc.registerService(AppServiceDescriptor, {
+  async GetApplicationMetadata() {
+    return {
+      name: app.name,
+      version: app.version,
+    };
+  },
+
   async SetTheme(request: SetThemeRequest) {
     app.setTheme(request.theme as Theme);
     return {};

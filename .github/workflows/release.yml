@@ -28,6 +28,8 @@ jobs:
       MAC_APPLE_ID: ${{ secrets.MAC_APPLE_ID }}
       # App-specific password generated at appleid.apple.com for notarization.
       MAC_APPLE_PASSWORD: ${{ secrets.MAC_APPLE_PASSWORD }}
+      # Sentry project DSN used for production telemetry.
+      SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
 
     steps:
       - uses: actions/checkout@v6
