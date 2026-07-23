@@ -15,7 +15,7 @@ export default defineConfig(({ command, mode }) => {
 })
 
 function createBuildTimeDefines(sentryEnabled: boolean): Record<string, string> {
-  const sentryDsn = sentryEnabled ? (process.env.SENTRY_DSN ?? "") : "";
+  const sentryDsn = sentryEnabled ? (process.env.SENTRY_DSN ?? "") : ""
 
   return {
     SENTRY_DSN: JSON.stringify(sentryDsn),
@@ -37,19 +37,8 @@ function defineMainConfig(buildTimeDefines: Record<string, string>): UserConfig 
         formats: ["es"],
         fileName: () => "index.js",
       },
-      rollupOptions: {
-        external: [
-          "mobrowser",
-          "import-in-the-middle",
-          "module-details-from-path",
-          "require-in-the-middle",
-          // Externalize all Node.js built-in modules
-          /^node:.*/,
-        ],
-      },
     },
     resolve: {
-      conditions: ["node"],
       alias: {
         "@": path.resolve(__dirname, "./src/main"),
       },
@@ -79,15 +68,6 @@ function defineRendererConfig(buildTimeDefines: Record<string, string>): UserCon
         "@": path.resolve(__dirname, "./src/renderer"),
       },
     },
-    // web-txt2img and onnxruntime-web both use dynamic imports and worker
-    // URLs that Vite's dep pre-bundler cannot resolve statically.  Excluding
-    // them keeps the packages as plain ES module imports at runtime.
-    optimizeDeps: {
-      exclude: ["web-txt2img", "onnxruntime-web", "@xenova/transformers"],
-    },
-    // Copy the onnxruntime-web WASM binaries into the build output so the
-    // runtime can fetch them from the same origin.
-    assetsInclude: ["**/*.wasm"],
     server: {
       forwardConsole: {
         unhandledErrors: true,

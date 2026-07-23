@@ -1,5 +1,5 @@
 import './sentry';
-import { app, BrowserWindow, desktop, ipc, Menu, MenuItem, MenuWithRole, prefs, Theme } from '@mobrowser/api';
+import { app, BrowserWindow, workspace, ipc, Menu, MenuItem, MenuWithRole, prefs, Theme } from '@mobrowser/api';
 import { exec } from 'node:child_process';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
@@ -12,6 +12,8 @@ import {
   GetStoredOpenAIApiKeyRequest,
   GetStoredOpenAIApiKeyResponse,
   OpenExternalUrlRequest,
+  PickReferenceImageRequest,
+  PickReferenceImageResponse,
   SaveIconRequest,
   SaveIconResponse,
   SetOpenAIApiKeyRequest,
@@ -22,12 +24,11 @@ import {
 } from './gen/app';
 import { AppServiceDescriptor } from './gen/ipc_service';
 import { buildPrompt } from './lib/prompt-builder';
-import type { ProviderName } from './lib/image-provider';
-import { getProvider } from './lib/image-provider';
+import { getProvider, resolveProviderName } from './lib/image-provider';
 import {
-  getResolvedOpenAIApiKey,
-  hasOpenAIApiKeyInPrefs,
-  OPENAI_API_KEY_PREFS_KEY,
+  getResolvedApiKey,
+  hasApiKeyInPrefs,
+  API_KEY_PREFS_KEY,
 } from './lib/openai-api-key';
 
 // ---------------------------------------------------------------------------
@@ -127,7 +128,7 @@ async function showAboutDialog() {
     ],
   });
   if (result.button.type === 'secondary') {
-    desktop.openUrl(GITHUB_REPOSITORY_URL);
+    workspace.openUrl(GITHUB_REPOSITORY_URL);
   }
 }
 
@@ -204,7 +205,7 @@ const helpMenu = new MenuWithRole({
       id: 'openGitHub',
       label: 'Open GitHub Repository...',
       action: (_item: MenuItem) => {
-        desktop.openUrl(GITHUB_REPOSITORY_URL);
+        workspace.openUrl(GITHUB_REPOSITORY_URL);
       }
     }),
   ]
@@ -343,7 +344,7 @@ ipc.registerService(AppServiceDescriptor, {
 
   async ShowPathInFinder(request: ShowPathInFinderRequest) {
     if (request.path) {
-      desktop.showPath(request.path);
+      workspace.showPath(request.path);
     }
     return {};
   },
@@ -351,9 +352,53 @@ ipc.registerService(AppServiceDescriptor, {
   async OpenExternalUrl(request: OpenExternalUrlRequest) {
     const url = request.url.trim();
     if (url) {
-      desktop.openUrl(url);
+      workspace.openUrl(url);
     }
     return {};
+  },
+
+  async PickReferenceImage(
+    _request: PickReferenceImageRequest
+  ): Promise<PickReferenceImageResponse> {
+    // Use the native open dialog rather than an HTML <input type=file>: in
+    // MoBrowser the native picker is the reliable way to choose a file from the
+    // sandboxed renderer.
+    const pick = await app.showOpenDialog({
+      parentWindow: win,
+      title: 'Choose reference image',
+      buttonLabelOpen: 'Attach',
+      selectionPolicy: 'files',
+      filters: [
+        { name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] },
+      ],
+    });
+
+    if (pick.canceled || pick.paths.length === 0) {
+      return { imageB64: '', mime: '', canceled: true, error: '' };
+    }
+
+    try {
+      const picked = pick.paths[0];
+      const bytes = await fs.readFile(picked);
+      const ext = path.extname(picked).toLowerCase();
+      const mime =
+        ext === '.jpg' || ext === '.jpeg'
+          ? 'image/jpeg'
+          : ext === '.webp'
+            ? 'image/webp'
+            : ext === '.gif'
+              ? 'image/gif'
+              : 'image/png';
+      return {
+        imageB64: bytes.toString('base64'),
+        mime,
+        canceled: false,
+        error: '',
+      };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return { imageB64: '', mime: '', canceled: false, error: message };
+    }
   },
 
   async GenerateIcon(request: GenerateIconRequest): Promise<GenerateIconResponse> {
@@ -375,18 +420,18 @@ ipc.registerService(AppServiceDescriptor, {
   async GetOpenAIApiKeyStatus(
     _request: GetOpenAIApiKeyStatusRequest
   ): Promise<GetOpenAIApiKeyStatusResponse> {
-    const name =
-      (process.env.ICON_PROVIDER as ProviderName | undefined) ?? 'openai';
+    // A key is required for any real image provider (OpenAI or OpenRouter);
+    // only the mock provider needs none.
     return {
-      openaiKeyRequired: name === 'openai',
-      hasOpenaiKey: hasOpenAIApiKeyInPrefs(),
+      openaiKeyRequired: resolveProviderName() !== 'mock',
+      hasOpenaiKey: hasApiKeyInPrefs(),
     };
   },
 
   async GetStoredOpenAIApiKey(
     _request: GetStoredOpenAIApiKeyRequest
   ): Promise<GetStoredOpenAIApiKeyResponse> {
-    return { apiKey: getResolvedOpenAIApiKey() };
+    return { apiKey: getResolvedApiKey() };
   },
 
   async SetOpenAIApiKey(
@@ -396,7 +441,7 @@ ipc.registerService(AppServiceDescriptor, {
     if (!key) {
       return { error: 'API key cannot be empty.' };
     }
-    prefs.setString(OPENAI_API_KEY_PREFS_KEY, key);
+    prefs.setString(API_KEY_PREFS_KEY, key);
     if (!prefs.persist()) {
       return { error: 'Could not save preferences to disk.' };
     }
