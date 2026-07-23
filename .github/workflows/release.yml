@@ -67,11 +67,15 @@ jobs:
       - name: Build release package
         run: npm run build -- --verbose
 
+      - name: Create release installer
+        run: npm run pack -- --verbose
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: moicons-macos-arm64
           path: build/dist/mac-arm64/pack/*.dmg
+          if-no-files-found: error
 
   release:
     name: Create GitHub Release Draft
