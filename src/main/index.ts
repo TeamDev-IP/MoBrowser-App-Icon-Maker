@@ -1,5 +1,5 @@
 import './sentry';
-import { app, BrowserWindow, desktop, ipc, Menu, MenuItem, MenuWithRole, prefs, Theme } from '@mobrowser/api';
+import { app, BrowserWindow, workspace, ipc, Menu, MenuItem, MenuWithRole, prefs, Theme } from '@mobrowser/api';
 import { exec } from 'node:child_process';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
@@ -128,7 +128,7 @@ async function showAboutDialog() {
     ],
   });
   if (result.button.type === 'secondary') {
-    desktop.openUrl(GITHUB_REPOSITORY_URL);
+    workspace.openUrl(GITHUB_REPOSITORY_URL);
   }
 }
 
@@ -205,7 +205,7 @@ const helpMenu = new MenuWithRole({
       id: 'openGitHub',
       label: 'Open GitHub Repository...',
       action: (_item: MenuItem) => {
-        desktop.openUrl(GITHUB_REPOSITORY_URL);
+        workspace.openUrl(GITHUB_REPOSITORY_URL);
       }
     }),
   ]
@@ -344,7 +344,7 @@ ipc.registerService(AppServiceDescriptor, {
 
   async ShowPathInFinder(request: ShowPathInFinderRequest) {
     if (request.path) {
-      desktop.showPath(request.path);
+      workspace.showPath(request.path);
     }
     return {};
   },
@@ -352,7 +352,7 @@ ipc.registerService(AppServiceDescriptor, {
   async OpenExternalUrl(request: OpenExternalUrlRequest) {
     const url = request.url.trim();
     if (url) {
-      desktop.openUrl(url);
+      workspace.openUrl(url);
     }
     return {};
   },

@@ -92,12 +92,13 @@ export function getProvider(): ImageProvider {
 
 /**
  * Run `fn` up to `maxAttempts` times.  On failure before the last attempt,
- * waits `initialDelayMs × attempt` milliseconds before retrying (linear back-off).
+ * retries errors accepted by `shouldRetry` after a linear back-off.
  */
 export async function withRetry<T>(
   fn: () => Promise<T>,
   maxAttempts = 3,
-  initialDelayMs = 1_000
+  initialDelayMs = 1_000,
+  shouldRetry: (error: unknown) => boolean = () => true
 ): Promise<T> {
   let lastError: unknown;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -105,8 +106,10 @@ export async function withRetry<T>(
       return await fn();
     } catch (err) {
       lastError = err;
-      if (attempt < maxAttempts) {
+      if (attempt < maxAttempts && shouldRetry(err)) {
         await new Promise<void>((r) => setTimeout(r, initialDelayMs * attempt));
+      } else {
+        throw err;
       }
     }
   }

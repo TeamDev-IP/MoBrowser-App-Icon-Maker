@@ -46,9 +46,25 @@ interface ChatCompletionResponse {
   }>;
 }
 
+class OpenRouterHttpError extends Error {
+  constructor(
+    readonly status: number,
+    body: string
+  ) {
+    super(`OpenRouter API error ${status}: ${body}`);
+    this.name = "OpenRouterHttpError";
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+/** Retry network failures, throttling, timeouts, and server errors. */
+function isRetryableError(error: unknown): boolean {
+  if (!(error instanceof OpenRouterHttpError)) return true;
+  return error.status === 408 || error.status === 429 || error.status >= 500;
+}
 
 /** Strip a `data:<mime>;base64,` prefix, returning the raw base64 payload. */
 function dataUrlToBase64(url: string): string {
@@ -179,7 +195,7 @@ export class OpenRouterProvider implements ImageProvider {
 
         if (!res.ok) {
           const body = await res.text();
-          throw new Error(`OpenRouter API error ${res.status}: ${body}`);
+          throw new OpenRouterHttpError(res.status, body);
         }
 
         const json = (await res.json()) as ChatCompletionResponse;
@@ -193,6 +209,6 @@ export class OpenRouterProvider implements ImageProvider {
       } finally {
         clearTimeout(timeoutId);
       }
-    }, MAX_RETRIES);
+    }, MAX_RETRIES, 1_000, isRetryableError);
   }
 }

@@ -83,22 +83,24 @@ async function applySquircleMask(dataUrl: string): Promise<string> {
   return canvas.toDataURL("image/png")
 }
 
-// ── Blob URL → base64 helper ───────────────────────────────────────────────
+// Reference image normalization.
 
-async function blobUrlToBase64(url: string): Promise<string> {
-  const response = await fetch(url)
-  const blob = await response.blob()
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onloadend = () => {
-      const result = reader.result as string
-      // Strip the "data:<mime>;base64," prefix.
-      const comma = result.indexOf(",")
-      resolve(comma >= 0 ? result.slice(comma + 1) : result)
-    }
-    reader.onerror = reject
-    reader.readAsDataURL(blob)
-  })
+async function imageUrlToPngBase64(url: string): Promise<string> {
+  const bitmap = await createImageBitmap(await fetch(url).then((r) => r.blob()))
+  try {
+    const canvas = document.createElement("canvas")
+    canvas.width = bitmap.width
+    canvas.height = bitmap.height
+    const ctx = canvas.getContext("2d")
+    if (!ctx) throw new Error("Could not create a canvas rendering context.")
+    ctx.drawImage(bitmap, 0, 0)
+    const dataUrl = canvas.toDataURL("image/png")
+    const comma = dataUrl.indexOf(",")
+    if (comma < 0) throw new Error("Could not encode the reference image.")
+    return dataUrl.slice(comma + 1)
+  } finally {
+    bitmap.close()
+  }
 }
 
 // ── Hook ───────────────────────────────────────────────────────────────────
@@ -124,11 +126,11 @@ export function useIconPipeline(): IconPipeline {
     setProgress({ fraction: 0, label: "" })
 
     try {
-      // Convert the optional reference blob URL to raw base64.
+      // Normalize the optional reference image to PNG before sending it.
       let referenceImage = ""
       if (referenceDataUrl) {
         try {
-          referenceImage = await blobUrlToBase64(referenceDataUrl)
+          referenceImage = await imageUrlToPngBase64(referenceDataUrl)
         } catch {
           // Non-fatal: proceed without the reference image.
         }

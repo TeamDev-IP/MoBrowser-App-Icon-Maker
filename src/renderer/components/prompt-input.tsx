@@ -1,4 +1,10 @@
-import { useEffect, useRef, type KeyboardEvent } from "react"
+import {
+  useEffect,
+  useRef,
+  type Dispatch,
+  type KeyboardEvent,
+  type SetStateAction,
+} from "react"
 import {
   ArrowUp,
   ChevronRight,
@@ -46,7 +52,7 @@ export function PromptInput({
   inputDisabled: boolean
   placeholder: string
   attachments: string[]
-  onAttachmentsChange: (attachments: string[]) => void
+  onAttachmentsChange: Dispatch<SetStateAction<string[]>>
   onOpenApiKeySettings: () => void
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -66,14 +72,14 @@ export function PromptInput({
       const res = await ipc.app.PickReferenceImage({})
       if (res.canceled || !res.imageB64) return
       const dataUrl = `data:${res.mime || "image/png"};base64,${res.imageB64}`
-      onAttachmentsChange([...attachments, dataUrl])
+      onAttachmentsChange((current) => [...current, dataUrl])
     } catch {
       // Ignore; the user can retry.
     }
   }
 
   const removeAttachment = (index: number) => {
-    onAttachmentsChange(attachments.filter((_, i) => i !== index))
+    onAttachmentsChange((current) => current.filter((_, i) => i !== index))
   }
 
   // Paste an image (⌘V) anywhere in the app to attach it as a reference.
@@ -94,12 +100,14 @@ export function PromptInput({
       // Image present: don't let the raw bytes land in the textarea.
       e.preventDefault()
       Promise.all(files.map(readAsDataUrl))
-        .then((urls) => onAttachmentsChange([...attachments, ...urls]))
+        .then((urls) =>
+          onAttachmentsChange((current) => [...current, ...urls])
+        )
         .catch(() => {})
     }
     document.addEventListener("paste", onPaste)
     return () => document.removeEventListener("paste", onPaste)
-  }, [attachments, onAttachmentsChange, inputDisabled])
+  }, [onAttachmentsChange, inputDisabled])
 
   return (
     <div
